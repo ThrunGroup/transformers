@@ -21,7 +21,7 @@ def get_data(dataset_name: str, tokenizer=None):
 
     print(tokenized)
 
-    # # Convert the samples to PyTorch tensors and concatenate them with the correct amount of padding
+    # Convert the samples to PyTorch tensors and concatenate them with the correct amount of padding
     # data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
     return tokenized
