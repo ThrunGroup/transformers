@@ -441,6 +441,7 @@ class BigBirdBlockSparseAttention(nn.Module):
         x = x.view(*new_x_shape)
         return x.permute(0, 2, 1, 3)
 
+    @profile
     def forward(
         self,
         hidden_states,
@@ -511,6 +512,7 @@ class BigBirdBlockSparseAttention(nn.Module):
             inp_1.reshape((-1,) + inp_1.shape[-2:]), inp_2.reshape((-1,) + inp_2.shape[-2:]).transpose(1, 2)
         ).view(inp_1.shape[: ndim - 2] + (inp_1.shape[ndim - 2], inp_2.shape[ndim - 2]))
 
+    @profile
     def bigbird_block_sparse_attention(
         self,
         query_layer,
@@ -1359,7 +1361,7 @@ class BigBirdAttention(nn.Module):
 
         if not self.training:
             self.self.eval()
-
+    @profile
     def forward(
         self,
         hidden_states,
@@ -1467,7 +1469,7 @@ class BigBirdLayer(nn.Module):
 
         if self.add_cross_attention:
             self.crossattention.set_attention_type(value)
-
+    @profile
     def forward(
         self,
         hidden_states,
@@ -1980,6 +1982,7 @@ class BigBirdModel(BigBirdPreTrainedModel):
         output_type=BaseModelOutputWithPoolingAndCrossAttentions,
         config_class=_CONFIG_FOR_DOC,
     )
+    @profile
     def forward(
         self,
         input_ids: torch.LongTensor = None,
@@ -2683,6 +2686,7 @@ class BigBirdForSequenceClassification(BigBirdPreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
 
+    @profile
     @add_start_docstrings_to_model_forward(BIG_BIRD_INPUTS_DOCSTRING.format("batch_size, sequence_length"))
     @replace_return_docstrings(output_type=SequenceClassifierOutput, config_class=_CONFIG_FOR_DOC)
     def forward(
