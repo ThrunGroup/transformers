@@ -6,7 +6,9 @@ from typing import List
 def get_model_tokenizer(model_name: str):
     if model_name == "transformer_xl":
         pretrained_model = "transfo-xl-wt103"
-        model = TransfoXLLMHeadModel.from_pretrained(pretrained_model)
+        model = TransfoXLLMHeadModel.from_pretrained(pretrained_model,
+                                                     accelerator_type="SVD",
+                                                     accelerator_args={"k": 10})
         tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
         return model, tokenizer
 
@@ -22,6 +24,7 @@ def inference_pipeline(
     for model_name in model_names:
         model, tokenizer = get_model_tokenizer(model_name)
         models[model_name] = model
+        print(model.config.get("d_model"))
         tokenizers[model_name] = tokenizer
 
     # Benchmark the inference time for each model

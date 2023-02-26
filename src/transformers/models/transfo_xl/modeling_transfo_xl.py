@@ -197,18 +197,20 @@ class PositionalEmbedding(nn.Module):
 
 class PositionwiseFF(nn.Module):
     def __init__(self, d_model, d_inner, dropout, pre_lnorm=False, layer_norm_epsilon=1e-5,
-                 accelerator_type: str = "SVD"):
+                 accelerator_type: str = "SVD", accelerator_args: dict = {}):
         super().__init__()
 
         self.d_model = d_model
         self.d_inner = d_inner
         self.dropout = dropout
 
+        self.accelerator = AcceleratorFactory().get_accelerator(accelerator_type)  # Load an appropriate accelerator
+
         self.CoreNet = nn.Sequential(
-            nn.Linear(d_model, d_inner),
+            self.accelerator(nn.Linear(d_model, d_inner), **accelerator_args),  # Apply the accelerator
             nn.ReLU(inplace=True),
             nn.Dropout(dropout),
-            nn.Linear(d_inner, d_model),
+            self.accelerator(nn.Linear(d_inner, d_model), **accelerator_args),  # Apply the accelerator
             nn.Dropout(dropout),
         )
 
@@ -372,30 +374,32 @@ class RelPartialLearnableMultiHeadAttn(nn.Module):
 
 
 class RelPartialLearnableDecoderLayer(nn.Module):
-    def __init__(self, n_head, d_model, d_head, d_inner, dropout, layer_norm_epsilon=1e-5, **kwargs):
+    def __init__(self, n_head, d_model, d_head, d_inner, dropout, layer_norm_epsilon=1e-5,
+                 accelerator_type: str = "SVD", accelerator_args: dict = {}, **kwargs):
         super().__init__()
 
         self.dec_attn = RelPartialLearnableMultiHeadAttn(
             n_head, d_model, d_head, dropout, layer_norm_epsilon=layer_norm_epsilon, **kwargs
         )
         self.pos_ff = PositionwiseFF(
-            d_model, d_inner, dropout, pre_lnorm=kwargs.get("pre_lnorm"), layer_norm_epsilon=layer_norm_epsilon
+            d_model, d_inner, dropout, pre_lnorm=kwargs.get("pre_lnorm"), layer_norm_epsilon=layer_norm_epsilon,
+            accelerator_type=accelerator_type, accelerator_args=accelerator_args,
         )
 
-    def forward(self, dec_inp, r, dec_attn_mask=None, mems=None, head_mask=None, output_attentions=False):
-        attn_outputs = self.dec_attn(
-            dec_inp,
-            r,
-            attn_mask=dec_attn_mask,
-            mems=mems,
-            head_mask=head_mask,
-            output_attentions=output_attentions,
-        )
-        ff_output = self.pos_ff(attn_outputs[0])
+        def forward(self, dec_inp, r, dec_attn_mask=None, mems=None, head_mask=None, output_attentions=False):
+            attn_outputs = self.dec_attn(
+                dec_inp,
+                r,
+                attn_mask=dec_attn_mask,
+                mems=mems,
+                head_mask=head_mask,
+                output_attentions=output_attentions,
+            )
+            ff_output = self.pos_ff(attn_outputs[0])
 
-        outputs = [ff_output] + attn_outputs[1:]
+            outputs = [ff_output] + attn_outputs[1:]
 
-        return outputs
+            return outputs
 
 
 class AdaptiveEmbedding(nn.Module):
@@ -711,51 +715,51 @@ class TransfoXLLMHeadModelOutput(ModelOutput):
 
 TRANSFO_XL_START_DOCSTRING = r"""
 
-    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
-    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
-    etc.)
+This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+etc.)
 
-    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
-    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
-    and behavior.
+This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+and behavior.
 
-    Parameters:
-        config ([`TransfoXLConfig`]): Model configuration class with all the parameters of the model.
-            Initializing with a config file does not load the weights associated with the model, only the
-            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+Parameters:
+    config ([`TransfoXLConfig`]): Model configuration class with all the parameters of the model.
+        Initializing with a config file does not load the weights associated with the model, only the
+        configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
 """
 
 TRANSFO_XL_INPUTS_DOCSTRING = r"""
-    Args:
-        input_ids (`torch.LongTensor` of shape `(batch_size, sequence_length)`):
-            Indices of input sequence tokens in the vocabulary.
+Args:
+    input_ids (`torch.LongTensor` of shape `(batch_size, sequence_length)`):
+        Indices of input sequence tokens in the vocabulary.
 
-            Indices can be obtained using [`AutoTokenizer`]. See [`PreTrainedTokenizer.encode`] and
-            [`PreTrainedTokenizer.__call__`] for details.
+        Indices can be obtained using [`AutoTokenizer`]. See [`PreTrainedTokenizer.encode`] and
+        [`PreTrainedTokenizer.__call__`] for details.
 
-            [What are input IDs?](../glossary#input-ids)
-        mems (`List[torch.FloatTensor]` of length `config.n_layers`):
-            Contains pre-computed hidden-states (key and values in the attention blocks) as computed by the model (see
-            `mems` output below). Can be used to speed up sequential decoding. The token ids which have their mems
-            given to this model should not be passed as `input_ids` as they have already been computed.
-        head_mask (`torch.FloatTensor` of shape `(num_heads,)` or `(num_layers, num_heads)`, *optional*):
-            Mask to nullify selected heads of the self-attention modules. Mask values selected in `[0, 1]`:
+        [What are input IDs?](../glossary#input-ids)
+    mems (`List[torch.FloatTensor]` of length `config.n_layers`):
+        Contains pre-computed hidden-states (key and values in the attention blocks) as computed by the model (see
+        `mems` output below). Can be used to speed up sequential decoding. The token ids which have their mems
+        given to this model should not be passed as `input_ids` as they have already been computed.
+    head_mask (`torch.FloatTensor` of shape `(num_heads,)` or `(num_layers, num_heads)`, *optional*):
+        Mask to nullify selected heads of the self-attention modules. Mask values selected in `[0, 1]`:
 
-            - 1 indicates the head is **not masked**,
-            - 0 indicates the head is **masked**.
+        - 1 indicates the head is **not masked**,
+        - 0 indicates the head is **masked**.
 
-        inputs_embeds (`torch.FloatTensor` of shape `(batch_size, sequence_length, hidden_size)`, *optional*):
-            Optionally, instead of passing `input_ids` you can choose to directly pass an embedded representation. This
-            is useful if you want more control over how to convert `input_ids` indices into associated vectors than the
-            model's internal embedding lookup matrix.
-        output_attentions (`bool`, *optional*):
-            Whether or not to return the attentions tensors of all attention layers. See `attentions` under returned
-            tensors for more detail.
-        output_hidden_states (`bool`, *optional*):
-            Whether or not to return the hidden states of all layers. See `hidden_states` under returned tensors for
-            more detail.
-        return_dict (`bool`, *optional*):
-            Whether or not to return a [`~utils.ModelOutput`] instead of a plain tuple.
+    inputs_embeds (`torch.FloatTensor` of shape `(batch_size, sequence_length, hidden_size)`, *optional*):
+        Optionally, instead of passing `input_ids` you can choose to directly pass an embedded representation. This
+        is useful if you want more control over how to convert `input_ids` indices into associated vectors than the
+        model's internal embedding lookup matrix.
+    output_attentions (`bool`, *optional*):
+        Whether or not to return the attentions tensors of all attention layers. See `attentions` under returned
+        tensors for more detail.
+    output_hidden_states (`bool`, *optional*):
+        Whether or not to return the hidden states of all layers. See `hidden_states` under returned tensors for
+        more detail.
+    return_dict (`bool`, *optional*):
+        Whether or not to return a [`~utils.ModelOutput`] instead of a plain tuple.
 """
 
 
@@ -764,7 +768,7 @@ TRANSFO_XL_INPUTS_DOCSTRING = r"""
     TRANSFO_XL_START_DOCSTRING,
 )
 class TransfoXLModel(TransfoXLPreTrainedModel):
-    def __init__(self, config):
+    def __init__(self, config, accelerator_type: str = "SVD", accelerator_args: dict = {}):
         super().__init__(config)
 
         self.n_token = config.vocab_size
@@ -803,6 +807,8 @@ class TransfoXLModel(TransfoXLPreTrainedModel):
                         r_w_bias=None if config.untie_r else self.r_w_bias,
                         r_r_bias=None if config.untie_r else self.r_r_bias,
                         layer_norm_epsilon=config.layer_norm_epsilon,
+                        accelerator_type=accelerator_type,
+                        accelerator_args=accelerator_args,
                     )
                 )
         else:  # learnable embeddings and absolute embeddings are not used in our pretrained checkpoints
@@ -935,7 +941,8 @@ class TransfoXLModel(TransfoXLPreTrainedModel):
                 mask_shift_len = qlen - mask_len
             else:
                 mask_shift_len = qlen
-            dec_attn_mask = (torch.triu(all_ones, 1 + mlen) + torch.tril(all_ones, -mask_shift_len))[:, :, None]  # -1
+            dec_attn_mask = (torch.triu(all_ones, 1 + mlen) + torch.tril(all_ones, -mask_shift_len))[:, :,
+                            None]  # -1
         else:
             dec_attn_mask = torch.triu(word_emb.new_ones((qlen, klen), dtype=torch.uint8), diagonal=1 + mlen)[
                             :, :, None
@@ -1006,9 +1013,9 @@ class TransfoXLModel(TransfoXLPreTrainedModel):
 class TransfoXLLMHeadModel(TransfoXLPreTrainedModel):
     _keys_to_ignore_on_load_missing = [r"crit\.out_projs\.\d+", r"crit\.out_layers\.\d+\.weight"]
 
-    def __init__(self, config):
+    def __init__(self, config, accelerator_type: str = "SVD", accelerator_args: dict = {}):
         super().__init__(config)
-        self.transformer = TransfoXLModel(config)
+        self.transformer = TransfoXLModel(config, accelerator_type=accelerator_type, accelerator_args=accelerator_args)
         self.sample_softmax = config.sample_softmax
         self.trainer_compatible = getattr(config, "trainer_compatible", False)
 

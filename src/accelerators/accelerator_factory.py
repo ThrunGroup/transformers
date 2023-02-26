@@ -1,15 +1,17 @@
-from svd import SVDWrapper
+from .svd import SVDWrapper
 
 
 class AcceleratorFactory:
+    """
+
+    """
     @staticmethod
-    def get_accelerator(type: str, **kwargs):
+    def get_accelerator(type: str):
         if type == "SVD":
-            return SVDWrapper(**kwargs)
+            return SVDWrapper
         else:
             assert False, "There is no such accelerator."
 
 
 if __name__ == "__main__":
-    factory = AcceleratorFactory()
-    factory.get_accelerator("test", k=10)
+    accelerator = AcceleratorFactory().get_accelerator("SVD")
