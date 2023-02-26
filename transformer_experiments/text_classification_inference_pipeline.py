@@ -23,7 +23,7 @@ def inference_pipeline(
     # Benchmark the inference time for each model and dataset
     for dataset_name in datasets:
         print(f"Dataset: ", dataset_name)
-        inputs, labels = get_data(dataset_name)
+        inputs, labels = get_data(dataset_name, 1)
         for model_name, model in text_classification_pipelines.items():
             print(f"Model: ", model_name)
             start_time = time.time()
@@ -37,4 +37,4 @@ def inference_pipeline(
 
 
 if __name__ == "__main__":
-    inference_pipeline(model_names=["google/bigbird-roberta-base"])
+    inference_pipeline(model_names=["transfo-xl-wt103"])

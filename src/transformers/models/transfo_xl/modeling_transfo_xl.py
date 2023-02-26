@@ -36,6 +36,7 @@ from ...utils import (
 from .configuration_transfo_xl import TransfoXLConfig
 from .modeling_transfo_xl_utilities import ProjectedAdaptiveLogSoftmax
 
+from accelerators.accelerator_factory import AcceleratorFactory
 
 logger = logging.get_logger(__name__)
 
@@ -64,7 +65,7 @@ def build_tf_to_pytorch_map(model, config):
             }
         )
         for i, (out_l, proj_l, tie_proj) in enumerate(
-            zip(model.crit.out_layers, model.crit.out_projs, config.tie_projs)
+                zip(model.crit.out_layers, model.crit.out_projs, config.tie_projs)
         ):
             layer_str = f"transformer/adaptive_softmax/cutoff_{i}/"
             if config.tie_word_embeddings:
@@ -160,7 +161,7 @@ def load_tf_weights_in_transfo_xl(model, config, tf_path):
         else:
             try:
                 assert (
-                    pointer.shape == array.shape
+                        pointer.shape == array.shape
                 ), f"Pointer shape {pointer.shape} and array shape {array.shape} mismatched"
             except AssertionError as e:
                 e.args += (pointer.shape, array.shape)
@@ -195,7 +196,8 @@ class PositionalEmbedding(nn.Module):
 
 
 class PositionwiseFF(nn.Module):
-    def __init__(self, d_model, d_inner, dropout, pre_lnorm=False, layer_norm_epsilon=1e-5):
+    def __init__(self, d_model, d_inner, dropout, pre_lnorm=False, layer_norm_epsilon=1e-5,
+                 accelerator_type: str = "SVD"):
         super().__init__()
 
         self.d_model = d_model
@@ -233,16 +235,16 @@ class PositionwiseFF(nn.Module):
 
 class RelPartialLearnableMultiHeadAttn(nn.Module):
     def __init__(
-        self,
-        n_head,
-        d_model,
-        d_head,
-        dropout,
-        dropatt=0,
-        pre_lnorm=False,
-        r_r_bias=None,
-        r_w_bias=None,
-        layer_norm_epsilon=1e-5,
+            self,
+            n_head,
+            d_model,
+            d_head,
+            dropout,
+            dropatt=0,
+            pre_lnorm=False,
+            r_r_bias=None,
+            r_w_bias=None,
+            layer_norm_epsilon=1e-5,
     ):
         super().__init__()
 
@@ -259,7 +261,7 @@ class RelPartialLearnableMultiHeadAttn(nn.Module):
 
         self.layer_norm = nn.LayerNorm(d_model, eps=layer_norm_epsilon)
 
-        self.scale = 1 / (d_head**0.5)
+        self.scale = 1 / (d_head ** 0.5)
 
         self.pre_lnorm = pre_lnorm
 
@@ -407,7 +409,7 @@ class AdaptiveEmbedding(nn.Module):
         self.div_val = div_val
         self.d_proj = d_proj
 
-        self.emb_scale = d_proj**0.5
+        self.emb_scale = d_proj ** 0.5
 
         self.cutoff_ends = [0] + self.cutoffs
 
@@ -420,7 +422,7 @@ class AdaptiveEmbedding(nn.Module):
         else:
             for i in range(len(self.cutoffs)):
                 l_idx, r_idx = self.cutoff_ends[i], self.cutoff_ends[i + 1]
-                d_emb_i = d_embed // (div_val**i)
+                d_emb_i = d_embed // (div_val ** i)
                 self.emb_layers.append(nn.Embedding(r_idx - l_idx, d_emb_i))
                 self.emb_projs.append(nn.Parameter(torch.FloatTensor(d_proj, d_emb_i)))
 
@@ -561,9 +563,9 @@ class TransfoXLPreTrainedModel(PreTrainedModel):
         assert 0 <= layer <= len(embeddings.emb_layers) - 1
 
         new_num_tokens_layer = (
-            new_num_tokens
-            - sum([emb.weight.shape[0] for emb in embeddings.emb_layers[:layer]])
-            - sum([emb.weight.shape[0] for emb in embeddings.emb_layers[layer + 1 :]])
+                new_num_tokens
+                - sum([emb.weight.shape[0] for emb in embeddings.emb_layers[:layer]])
+                - sum([emb.weight.shape[0] for emb in embeddings.emb_layers[layer + 1:]])
         )
         return new_num_tokens_layer, layer
 
@@ -871,14 +873,14 @@ class TransfoXLModel(TransfoXLPreTrainedModel):
         config_class=_CONFIG_FOR_DOC,
     )
     def forward(
-        self,
-        input_ids: Optional[torch.LongTensor] = None,
-        mems: Optional[List[torch.FloatTensor]] = None,
-        head_mask: Optional[torch.FloatTensor] = None,
-        inputs_embeds: Optional[torch.FloatTensor] = None,
-        output_attentions: Optional[bool] = None,
-        output_hidden_states: Optional[bool] = None,
-        return_dict: Optional[bool] = None,
+            self,
+            input_ids: Optional[torch.LongTensor] = None,
+            mems: Optional[List[torch.FloatTensor]] = None,
+            head_mask: Optional[torch.FloatTensor] = None,
+            inputs_embeds: Optional[torch.FloatTensor] = None,
+            output_attentions: Optional[bool] = None,
+            output_hidden_states: Optional[bool] = None,
+            return_dict: Optional[bool] = None,
     ) -> Union[Tuple, TransfoXLModelOutput]:
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -936,8 +938,8 @@ class TransfoXLModel(TransfoXLPreTrainedModel):
             dec_attn_mask = (torch.triu(all_ones, 1 + mlen) + torch.tril(all_ones, -mask_shift_len))[:, :, None]  # -1
         else:
             dec_attn_mask = torch.triu(word_emb.new_ones((qlen, klen), dtype=torch.uint8), diagonal=1 + mlen)[
-                :, :, None
-            ]
+                            :, :, None
+                            ]
 
         hids = []
         attentions = [] if output_attentions else None
@@ -1064,15 +1066,15 @@ class TransfoXLLMHeadModel(TransfoXLPreTrainedModel):
         config_class=_CONFIG_FOR_DOC,
     )
     def forward(
-        self,
-        input_ids: Optional[torch.LongTensor] = None,
-        mems: Optional[List[torch.FloatTensor]] = None,
-        head_mask: Optional[torch.FloatTensor] = None,
-        inputs_embeds: Optional[torch.FloatTensor] = None,
-        labels: Optional[torch.LongTensor] = None,
-        output_attentions: Optional[bool] = None,
-        output_hidden_states: Optional[bool] = None,
-        return_dict: Optional[bool] = None,
+            self,
+            input_ids: Optional[torch.LongTensor] = None,
+            mems: Optional[List[torch.FloatTensor]] = None,
+            head_mask: Optional[torch.FloatTensor] = None,
+            inputs_embeds: Optional[torch.FloatTensor] = None,
+            labels: Optional[torch.LongTensor] = None,
+            output_attentions: Optional[bool] = None,
+            output_hidden_states: Optional[bool] = None,
+            return_dict: Optional[bool] = None,
     ) -> Union[Tuple, TransfoXLLMHeadModelOutput]:
         r"""
         labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
@@ -1207,15 +1209,15 @@ class TransfoXLForSequenceClassification(TransfoXLPreTrainedModel):
         config_class=_CONFIG_FOR_DOC,
     )
     def forward(
-        self,
-        input_ids: Optional[torch.LongTensor] = None,
-        mems: Optional[List[torch.FloatTensor]] = None,
-        head_mask: Optional[torch.FloatTensor] = None,
-        inputs_embeds: Optional[torch.FloatTensor] = None,
-        labels: Optional[torch.LongTensor] = None,
-        output_attentions: Optional[bool] = None,
-        output_hidden_states: Optional[bool] = None,
-        return_dict: Optional[bool] = None,
+            self,
+            input_ids: Optional[torch.LongTensor] = None,
+            mems: Optional[List[torch.FloatTensor]] = None,
+            head_mask: Optional[torch.FloatTensor] = None,
+            inputs_embeds: Optional[torch.FloatTensor] = None,
+            labels: Optional[torch.LongTensor] = None,
+            output_attentions: Optional[bool] = None,
+            output_hidden_states: Optional[bool] = None,
+            return_dict: Optional[bool] = None,
     ) -> Union[Tuple, TransfoXLSequenceClassifierOutputWithPast]:
         r"""
         labels (`torch.LongTensor` of shape `(batch_size,)`, *optional*):
@@ -1243,7 +1245,7 @@ class TransfoXLForSequenceClassification(TransfoXLPreTrainedModel):
             batch_size, sequence_length = inputs_embeds.shape[:2]
 
         assert (
-            self.config.pad_token_id is not None or batch_size == 1
+                self.config.pad_token_id is not None or batch_size == 1
         ), "Cannot handle batch sizes > 1 if no padding token is defined."
         if self.config.pad_token_id is None:
             sequence_lengths = -1
