@@ -9,13 +9,13 @@ class SVDWrapper(nn.Module):
         self.k = k
 
         # Apply SVD to the layer's weight matrix
-        u, s, v = torch.svd(layer.weight)
-        self.u = nn.Parameter(u[:, :k])
-        self.s = nn.Parameter(s[:k])
-        self.v = nn.Parameter(v[:k, :])
+        U, S, V = torch.svd(layer.weight)
+        U_k = U[:, :k]
+        S_k = S[:k]
+        V_k = V[:, :k].t()
 
         # Replace the layer's weights with the reduced weights
-        weight = self.u @ torch.diag(self.s) @ self.v
+        weight = U_k @ torch.diag(S_k) @ V_k
         self.layer.weight = torch.nn.Parameter(weight)
 
     def forward(self, input):

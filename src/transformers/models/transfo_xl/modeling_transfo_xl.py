@@ -36,8 +36,6 @@ from ...utils import (
 from .configuration_transfo_xl import TransfoXLConfig
 from .modeling_transfo_xl_utilities import ProjectedAdaptiveLogSoftmax
 
-from accelerators.accelerator_factory import AcceleratorFactory
-
 logger = logging.get_logger(__name__)
 
 _CHECKPOINT_FOR_DOC = "transfo-xl-wt103"
@@ -196,21 +194,18 @@ class PositionalEmbedding(nn.Module):
 
 
 class PositionwiseFF(nn.Module):
-    def __init__(self, d_model, d_inner, dropout, pre_lnorm=False, layer_norm_epsilon=1e-5,
-                 accelerator_type: str = "SVD", accelerator_args: dict = {}):
+    def __init__(self, d_model, d_inner, dropout, pre_lnorm=False, layer_norm_epsilon=1e-5):
         super().__init__()
 
         self.d_model = d_model
         self.d_inner = d_inner
         self.dropout = dropout
 
-        self.accelerator = AcceleratorFactory().get_accelerator(accelerator_type)  # Load an appropriate accelerator
-
         self.CoreNet = nn.Sequential(
-            self.accelerator(nn.Linear(d_model, d_inner), **accelerator_args),  # Apply the accelerator
+            nn.Linear(d_model, d_inner),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout),
-            self.accelerator(nn.Linear(d_inner, d_model), **accelerator_args),  # Apply the accelerator
+            nn.Linear(d_inner, d_model),
             nn.Dropout(dropout),
         )
 
@@ -374,8 +369,7 @@ class RelPartialLearnableMultiHeadAttn(nn.Module):
 
 
 class RelPartialLearnableDecoderLayer(nn.Module):
-    def __init__(self, n_head, d_model, d_head, d_inner, dropout, layer_norm_epsilon=1e-5,
-                 accelerator_type: str = "SVD", accelerator_args: dict = {}, **kwargs):
+    def __init__(self, n_head, d_model, d_head, d_inner, dropout, layer_norm_epsilon=1e-5, **kwargs):
         super().__init__()
 
         self.dec_attn = RelPartialLearnableMultiHeadAttn(
@@ -383,7 +377,6 @@ class RelPartialLearnableDecoderLayer(nn.Module):
         )
         self.pos_ff = PositionwiseFF(
             d_model, d_inner, dropout, pre_lnorm=kwargs.get("pre_lnorm"), layer_norm_epsilon=layer_norm_epsilon,
-            accelerator_type=accelerator_type, accelerator_args=accelerator_args,
         )
 
     def forward(self, dec_inp, r, dec_attn_mask=None, mems=None, head_mask=None, output_attentions=False):
@@ -768,7 +761,7 @@ Args:
     TRANSFO_XL_START_DOCSTRING,
 )
 class TransfoXLModel(TransfoXLPreTrainedModel):
-    def __init__(self, config, accelerator_type: str = "SVD", accelerator_args: dict = {}):
+    def __init__(self, config):
         super().__init__(config)
 
         self.n_token = config.vocab_size
@@ -807,8 +800,6 @@ class TransfoXLModel(TransfoXLPreTrainedModel):
                         r_w_bias=None if config.untie_r else self.r_w_bias,
                         r_r_bias=None if config.untie_r else self.r_r_bias,
                         layer_norm_epsilon=config.layer_norm_epsilon,
-                        accelerator_type=accelerator_type,
-                        accelerator_args=accelerator_args,
                     )
                 )
         else:  # learnable embeddings and absolute embeddings are not used in our pretrained checkpoints
@@ -1013,9 +1004,9 @@ class TransfoXLModel(TransfoXLPreTrainedModel):
 class TransfoXLLMHeadModel(TransfoXLPreTrainedModel):
     _keys_to_ignore_on_load_missing = [r"crit\.out_projs\.\d+", r"crit\.out_layers\.\d+\.weight"]
 
-    def __init__(self, config, accelerator_type: str = "SVD", accelerator_args: dict = {}):
+    def __init__(self, config):
         super().__init__(config)
-        self.transformer = TransfoXLModel(config, accelerator_type=accelerator_type, accelerator_args=accelerator_args)
+        self.transformer = TransfoXLModel(config)
         self.sample_softmax = config.sample_softmax
         self.trainer_compatible = getattr(config, "trainer_compatible", False)
 
