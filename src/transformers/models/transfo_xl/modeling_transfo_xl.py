@@ -386,20 +386,20 @@ class RelPartialLearnableDecoderLayer(nn.Module):
             accelerator_type=accelerator_type, accelerator_args=accelerator_args,
         )
 
-        def forward(self, dec_inp, r, dec_attn_mask=None, mems=None, head_mask=None, output_attentions=False):
-            attn_outputs = self.dec_attn(
-                dec_inp,
-                r,
-                attn_mask=dec_attn_mask,
-                mems=mems,
-                head_mask=head_mask,
-                output_attentions=output_attentions,
-            )
-            ff_output = self.pos_ff(attn_outputs[0])
+    def forward(self, dec_inp, r, dec_attn_mask=None, mems=None, head_mask=None, output_attentions=False):
+        attn_outputs = self.dec_attn(
+            dec_inp,
+            r,
+            attn_mask=dec_attn_mask,
+            mems=mems,
+            head_mask=head_mask,
+            output_attentions=output_attentions,
+        )
+        ff_output = self.pos_ff(attn_outputs[0])
 
-            outputs = [ff_output] + attn_outputs[1:]
+        outputs = [ff_output] + attn_outputs[1:]
 
-            return outputs
+        return outputs
 
 
 class AdaptiveEmbedding(nn.Module):
