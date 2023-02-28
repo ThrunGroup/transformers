@@ -1,8 +1,8 @@
-from transformers import AutoTokenizer, AutoModel, pipeline, TransfoXLLMHeadModel
+from transformers import AutoTokenizer, TransfoXLLMHeadModel
 import time
 from typing import List
 
-from utils.constants import TRANSFORMER_XL
+from utils.constants import TRANSFORMER_XL, SVD, PCA
 from accelerators.apply_accelerator import apply_accelerator
 
 
@@ -27,7 +27,8 @@ def inference_pipeline(
         model, tokenizer = get_model_tokenizer(model_name)
         models[model_name] = model
         tokenizers[model_name] = tokenizer
-        apply_accelerator(model_name, model, "SVD", k=10)
+        apply_accelerator(model_name, model, PCA, k=64)
+        print(model)
 
     # Benchmark the inference time for each model
     # Encode input sequence
@@ -36,14 +37,14 @@ def inference_pipeline(
         tokenizer = tokenizers[model_name]
         input_ids = tokenizer.encode("Once upon a time", return_tensors="pt")  # Encode input sequence
         start_time = time.time()
-        output_ids = model.generate(input_ids, max_length=10)  # Generate text
+        output_ids = model.generate(input_ids, max_length=40)  # Generate text
         end_time = time.time()
         inference_time = end_time - start_time
 
         # Decode output sequence
         output_text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        print("Model output: ", output_text)
-        print(f" Inference time: {inference_time:.4f} seconds")
+        print("\tModel output: ", output_text)
+        print(f"\tInference time: {inference_time:.4f} seconds")
 
 
 if __name__ == "__main__":
@@ -69,7 +70,8 @@ Vanilla, max 30
 Vanilla, max 40
     Model output:  Once upon a time, would be able to take advantage of the opportunity to take advantage of the opportunity to take advantage of the opportunity to take advantage of the opportunity to take advantage of the opportunity to take
     Inference time: 49.8048 seconds
-
-
-
+    
+PCA 64, max 40
+    Model output:  Once upon a time the the the the the the the the the the the the the the the the the the the the the the the the the the the the the the the the the the the the
+    Inference time: 44.4036 seconds
 """
