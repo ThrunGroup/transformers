@@ -1,9 +1,10 @@
-from transformers import AutoTokenizer, TransfoXLLMHeadModel
+from transformers import AutoTokenizer, TransfoXLLMHeadModel, GPT2LMHeadModel, GPT2Tokenizer
 import time
 from typing import List
 
-from utils.constants import TRANSFORMER_XL, SVD, PCA
+from utils.constants import TRANSFORMER_XL, SVD, PCA, GPT2, GPT2_LARGE
 from accelerators.apply_accelerator import apply_accelerator
+from datasets import load_dataset
 
 
 def get_model_tokenizer(model_name: str):
@@ -11,33 +12,41 @@ def get_model_tokenizer(model_name: str):
         pretrained_model = "transfo-xl-wt103"
         model = TransfoXLLMHeadModel.from_pretrained(pretrained_model)
         tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
-        return model, tokenizer
+    elif GPT2 in model_name:
+        tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+        model = GPT2LMHeadModel.from_pretrained(model_name, pad_token_id=tokenizer.eos_token_id)
+    else:
+        assert False, "No such model"
 
-    assert False, "No such model"
+    return model, tokenizer
 
 
 def inference_pipeline(
-        model_names: List[str] = [TRANSFORMER_XL],
-        accelerators: List[str] = [None, "SVD"]
+    model_names: List[str] = [GPT2], accelerators: List[str] = [None, "SVD"],
 ):
     # Set up the tokenizer and models
     models = {}
     tokenizers = {}
-    for model_name in model_names:
-        model, tokenizer = get_model_tokenizer(model_name)
-        models[model_name] = model
-        tokenizers[model_name] = tokenizer
-        apply_accelerator(model_name, model, SVD, k=4)
-        print(model)
+    for accelerator in accelerators:
+        for model_name in model_names:
+            model, tokenizer = get_model_tokenizer(model_name)
+            apply_accelerator(model_name, model, accelerator, k=200)
+            new_model_name = model_name + f"+ {accelerator}"
+            models[new_model_name] = model
+            tokenizers[new_model_name] = tokenizer
 
     # Benchmark the inference time for each model
     # Encode input sequence
+    # dataset = load_dataset("cbt", "CN")
     for model_name, model in models.items():
         print(f"Model: ", model_name)
         tokenizer = tokenizers[model_name]
-        input_ids = tokenizer.encode("Once upon a time", return_tensors="pt")  # Encode input sequence
+        input_ids = tokenizer.encode(
+            "Once upon a week, ",
+            return_tensors="pt",
+        )  # Encode input sequence
         start_time = time.time()
-        output_ids = model.generate(input_ids, max_length=40)  # Generate text
+        output_ids = model.generate(input_ids, max_length=50)  # Generate text
         end_time = time.time()
         inference_time = end_time - start_time
 
@@ -48,7 +57,7 @@ def inference_pipeline(
 
 
 if __name__ == "__main__":
-    inference_pipeline(model_names=[TRANSFORMER_XL])
+    inference_pipeline(model_names=[GPT2])
 
 """
 SVD 400, max 30
