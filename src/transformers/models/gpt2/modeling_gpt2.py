@@ -340,6 +340,7 @@ class GPT2Attention(nn.Module):
         return outputs  # a, present, (attentions)
 
 
+
 class GPT2MLP(nn.Module):
     def __init__(self, intermediate_size, config):
         super().__init__()
