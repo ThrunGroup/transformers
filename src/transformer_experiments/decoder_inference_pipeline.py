@@ -27,7 +27,7 @@ def inference_pipeline(
         model, tokenizer = get_model_tokenizer(model_name)
         models[model_name] = model
         tokenizers[model_name] = tokenizer
-        apply_accelerator(model_name, model, PCA, k=64)
+        apply_accelerator(model_name, model, SVD, k=4)
         print(model)
 
     # Benchmark the inference time for each model
