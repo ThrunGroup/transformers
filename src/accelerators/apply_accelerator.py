@@ -15,6 +15,7 @@ def apply_accelerator(model_name: str, model, accelerator_type: str = None, **ac
     """
     if accelerator_type is None:
         return
+
     accelerator = AcceleratorFactory().get_accelerator(accelerator_type)
     if model_name == TRANSFORMER_XL:
         for i, layer in enumerate(model.transformer.layers):
