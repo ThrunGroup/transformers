@@ -10,23 +10,23 @@ class SVDWrapper(nn.Module):
         super().__init__()
         self.layer = layer
         self.k = k
-        self.checkpoint_path = os.path.join(checkpoint_path, "svd", f"k_{k}")
+        self.accelerator_checkpoint_path = os.path.join(checkpoint_path, "svd", f"k_{k}")
         self.is_conv1d = is_conv1d
 
         # Apply SVD to the layer's weight matrix
-        if os.path.exists(self.checkpoint_path):
-            checkpoint = torch.load(self.checkpoint_path)
-            self.U = checkpoint["U"]
-            self.S = checkpoint["S"]
-            self.V_T = checkpoint["V_T"]
+        if os.path.exists(self.accelerator_checkpoint_path):
+            accelerator_checkpoint = torch.load(self.accelerator_checkpoint_path)
+            self.U = accelerator_checkpoint["U"]
+            self.S = accelerator_checkpoint["S"]
+            self.V_T = accelerator_checkpoint["V_T"]
         else:
             self.U, self.S, self.V_T = torch.linalg.svd(layer.weight, full_matrices=False)
             self.U = self.U[:, :self.k]
             self.S = self.S[:self.k]
             self.V_T = self.V_T[:self.k, :]
-            os.makedirs(os.path.dirname(self.checkpoint_path), exist_ok=True)
+            os.makedirs(os.path.dirname(self.accelerator_checkpoint_path), exist_ok=True)
             torch.save(
-                {"U": self.U, "S": self.S, "V_T": self.V_T}, self.checkpoint_path)
+                {"U": self.U, "S": self.S, "V_T": self.V_T}, self.accelerator_checkpoint_path)
 
     def forward(self, x):
         if self.is_conv1d:
