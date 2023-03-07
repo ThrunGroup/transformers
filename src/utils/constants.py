@@ -8,3 +8,6 @@ GPT2_XL = "gpt2-xl"
 # accelerators
 SVD = "SVD"
 PCA = "PCA"
+
+# datasets
+BILLSUM = "billsum"
