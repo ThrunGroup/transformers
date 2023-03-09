@@ -20,7 +20,7 @@ def get_billsum_dataset(tokenizer, model):
 
     def _preprocess_function(examples):
         inputs = [prefix + doc for doc in examples["text"]]
-        model_inputs = tokenizer(inputs, max_length=1024, truncation=True)
+        model_inputs = tokenizer(inputs, max_length=128, truncation=True)
 
         labels = tokenizer(text_target=examples["summary"], max_length=128, truncation=True)
 

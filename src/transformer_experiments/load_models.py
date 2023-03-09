@@ -14,6 +14,7 @@ def get_naive_model_and_tokenizer(model_name: str):
         tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
     elif GPT2 in model_name:
         tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+        tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         model = GPT2LMHeadModel.from_pretrained(model_name, pad_token_id=tokenizer.eos_token_id)
     else:
         assert False, "No such model"

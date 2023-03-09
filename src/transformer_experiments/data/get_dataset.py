@@ -1,4 +1,4 @@
-from get_billsum_dataset import get_billsum_dataset
+from .get_billsum_dataset import get_billsum_dataset
 from utils.constants import BILLSUM
 
 
