@@ -5,7 +5,8 @@ from utils.constants import TRANSFORMER_XL, SVD, PCA, GPT2, GPT2_LARGE
 from accelerators.apply_accelerator import apply_accelerator
 from data.get_dataset import get_dataset
 from load_models import get_naive_model_and_tokenizer
-from utils.constants import BILLSUM
+from evaluate_models import evaluate_model
+from utils.constants import BILLSUM, NUM_BLOCKS_GPT2
 from utils.parse_string import parse_string
 
 
@@ -38,7 +39,7 @@ def freeze_layers(model,
             print("This layer is not frozen: ", name)
 
 
-def finetune(model_name: str, model, tokenizer, dataset_name: str):
+def finetune(model_name: str, model, tokenizer, dataset_name: str, do_evaluation: bool = True):
     """
     Finetune the model on a dataset
 
@@ -46,7 +47,7 @@ def finetune(model_name: str, model, tokenizer, dataset_name: str):
     :param model: PyTorch model to finetune
     :param tokenizer: Tokenizer to tokenize the dataset
     :param dataset_name: Name of the dataset to train on
-    :return:
+    :param do_evaluation: Whether to evaluate the model after training the model and save the experiment results
     """
     dataset, data_collator, compute_metrics = get_dataset(dataset_name, tokenizer, model)
 
@@ -59,7 +60,6 @@ def finetune(model_name: str, model, tokenizer, dataset_name: str):
         weight_decay=0.01,
         save_total_limit=1,
         num_train_epochs=1,
-        # predict_with_generate=True,
     )
 
     trainer = Trainer(
@@ -70,6 +70,7 @@ def finetune(model_name: str, model, tokenizer, dataset_name: str):
         tokenizer=tokenizer,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
+        save_eval_checkpoints=True
     )
 
     trainer.train()
@@ -101,7 +102,8 @@ def create_model(model_type: str,
     model_name = f"{model_type}" \
                  f"_{accelerator_type}" \
                  f"_accelerated_{layers_to_accelerate}" \
-                 f"_froze_{layers_to_freeze}"
+                 f"_froze_{layers_to_freeze}" \
+                 f"_dataset_{dataset_name}"
 
     if train_accelerated_layers:
         model_name += "_trained_accelerated_layers"
@@ -110,15 +112,16 @@ def create_model(model_type: str,
 
     # Get which layers to freeze and accelerate
     num_total_blocks = len(model.transformer.h)
-    layers_to_freeze = parse_string(layers_to_freeze, num_total_blocks)
-    assert sorted(layers_to_freeze)[-1] \
-           <= num_total_blocks, f"There are only {num_total_blocks} blocks in this model"
-    layers_to_accelerate = parse_string(layers_to_accelerate, num_total_blocks)
-    assert sorted(layers_to_accelerate)[-1] \
-           <= num_total_blocks, f"There are only {num_total_blocks} blocks in this model"
+    if layers_to_freeze := parse_string(layers_to_freeze):
+        assert sorted(layers_to_freeze)[-1] <= num_total_blocks, \
+            f"There are only {num_total_blocks} blocks in this model"
+    if layers_to_accelerate := parse_string(layers_to_accelerate):
+        assert sorted(layers_to_accelerate)[-1] <= num_total_blocks, \
+            f"There are only {num_total_blocks} blocks in this model"
 
     # Accelerate & Finetune the model
-    accelerated_layers = apply_accelerator(model_type, model, accelerator_type, **accelerator_args)
+    accelerated_layers = apply_accelerator(model_type, model, layers_to_accelerate, accelerator_type,
+                                           **accelerator_args)
     freeze_layers(model, layers_to_freeze, train_accelerated_layers, accelerated_layers)
     finetune(model_name, model, tokenizer, dataset_name)
 
@@ -127,7 +130,7 @@ if __name__ == "__main__":
     create_model(model_type=GPT2,
                  dataset_name=BILLSUM,
                  layers_to_freeze="0-8,11",
-                 layers_to_accelerate="0,11",
-                 train_accelerated_layers=True,
+                 # layers_to_accelerate="0,11",
+                 train_accelerated_layers=False,
                  accelerator_type=SVD,
                  k=10)

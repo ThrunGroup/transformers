@@ -11,3 +11,6 @@ PCA = "PCA"
 
 # datasets
 BILLSUM = "billsum"
+
+# Number of blocks
+NUM_BLOCKS_GPT2 = 12

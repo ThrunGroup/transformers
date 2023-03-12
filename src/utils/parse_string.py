@@ -1,4 +1,7 @@
-def parse_string(s: str = None, max_length: int = None):
+from utils.constants import TRANSFORMER_XL, GPT2, GPT2_MEDIUM
+
+
+def parse_string(s: str = None):
     """
     Parses a string representing a list of integers and ranges of integers and returns a list of integers.
 
@@ -11,9 +14,8 @@ def parse_string(s: str = None, max_length: int = None):
     :param s: The input string to parse.
     :return: A list of integers represented by the input string.
     """
-    if None:
-        # For an empty string, return a full list
-        return list(range(max_length))
+    if not s:
+        return []
 
     result = []
     for part in s.split(','):
@@ -23,3 +25,11 @@ def parse_string(s: str = None, max_length: int = None):
         else:
             result.append(int(part))
     return result
+
+
+def get_model_type(model_name: str = None):
+    model_types = [GPT2_MEDIUM, GPT2, TRANSFORMER_XL]
+
+    for model_type in model_types:
+        if model_type in model_name:
+            return model_type

@@ -13,7 +13,7 @@ def get_billsum_dataset(tokenizer, model):
     :return: tokenized dataset, data collator, and compute_metrics function
     """
     dataset = load_dataset("billsum", split="ca_test")
-    dataset = dataset.train_test_split(test_size=0.2)
+    dataset = dataset.train_test_split(test_size=80)
 
     prefix = "summarize: "
     rouge = evaluate.load("rouge")
@@ -22,6 +22,8 @@ def get_billsum_dataset(tokenizer, model):
         inputs = [prefix + doc for doc in examples["text"]]
         model_inputs = tokenizer(inputs, max_length=128, truncation=True)
 
+        # TODO: decrease max_length of labels
+        #       (but then it raises ValueError: Expected input batch_size (2032) to match target batch_size (496).)
         labels = tokenizer(text_target=examples["summary"], max_length=128, truncation=True)
 
         model_inputs["labels"] = labels["input_ids"]
@@ -29,6 +31,7 @@ def get_billsum_dataset(tokenizer, model):
 
     def _compute_metrics(eval_pred):
         predictions, labels = eval_pred
+        predictions = np.argmax(predictions, axis=-1)
         decoded_preds = tokenizer.batch_decode(predictions, skip_special_tokens=True)
         labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
         decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)

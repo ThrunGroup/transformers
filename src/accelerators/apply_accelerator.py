@@ -3,10 +3,10 @@ from typing import List
 
 from accelerators.accelerator_factory import AcceleratorFactory
 from utils.constants import TRANSFORMER_XL, GPT2, GPT2_LARGE
-from utils.parse_string import parse_string
 
 
-def apply_accelerator(model_name: str, model,
+def apply_accelerator(model_name: str,
+                      model,
                       layers_to_accelerate: List[int] = None,
                       accelerator_type: str = None,
                       **accelerator_args):
