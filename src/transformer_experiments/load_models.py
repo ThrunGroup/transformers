@@ -29,7 +29,7 @@ def get_naive_model_and_tokenizer(model_name: str):
 
 def load_model(model_name: str):
     """
-    Load the model
+    Load the fine-tuned model
 
     :param model_name: Name of the model to load
     :return: Loaded model

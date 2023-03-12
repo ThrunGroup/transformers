@@ -1,11 +1,10 @@
-from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer, Trainer, TrainingArguments
+from transformers import Trainer, TrainingArguments
 from typing import List
 
-from utils.constants import TRANSFORMER_XL, SVD, PCA, GPT2, GPT2_LARGE
+from utils.constants import SVD, GPT2
 from accelerators.apply_accelerator import apply_accelerator
 from data.get_dataset import get_dataset
 from load_models import get_naive_model_and_tokenizer
-from evaluate_models import evaluate_model
 from utils.constants import BILLSUM, NUM_BLOCKS_GPT2
 from utils.parse_string import parse_string
 
@@ -127,10 +126,11 @@ def create_model(model_type: str,
 
 
 if __name__ == "__main__":
+    # Only train the accelerated FC layer and the very final linear layer
     create_model(model_type=GPT2,
                  dataset_name=BILLSUM,
-                 layers_to_freeze="0-8,11",
-                 # layers_to_accelerate="0,11",
-                 train_accelerated_layers=False,
+                 layers_to_freeze=f"0-{NUM_BLOCKS_GPT2 - 1}",
+                 layers_to_accelerate=f"{NUM_BLOCKS_GPT2 - 1}",
+                 train_accelerated_layers=True,
                  accelerator_type=SVD,
                  k=10)
