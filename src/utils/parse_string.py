@@ -14,7 +14,7 @@ def parse_string(s: str = None):
     :param s: The input string to parse.
     :return: A list of integers represented by the input string.
     """
-    if not s:
+    if not s or s == "None":
         return []
 
     result = []
@@ -33,3 +33,43 @@ def get_model_type(model_name: str = None):
     for model_type in model_types:
         if model_type in model_name:
             return model_type
+
+
+def string_to_dict(s: str) -> dict:
+    """
+    Convert a string of accelerator arguments into a dictionary.
+
+    This function can be used to extract accelerator arguments information from the model name.
+
+    Example:
+    If the string is "a:10,k:20", this function will return a dictionary of {'a': 10, 'k': 20}.
+
+    Args:
+        s (str): The string of accelerator arguments to convert to a dictionary.
+
+    Returns:
+        dict: The dictionary form of the string.
+    """
+    if not s:
+        return {}
+    pairs = s.split(",")
+    pairs = [pair.split(":") for pair in pairs]
+    dic = {k: int(v) for (k, v) in pairs}
+    return dic
+
+
+def dict_to_string(dic: dict) -> str:
+    """
+    Convert a dictionary of accelerator arguments into a string.
+
+    This function can be used to name the model in the "create_model" function inside create_models.py.
+
+    Example:
+    If the accelerator arguments are {'a': 10, 'k': 20}, the output string should be "a:10,k:20".
+
+    :param: dic (dict): The dictionary of accelerator arguments to convert to a string.
+    :return: The string form of the dictionary.
+    """
+    if dic == None:
+        return "None"
+    return ",".join([f"{k}:{v}" for (k, v) in dic.items()])

@@ -14,19 +14,23 @@ class SVDWrapper(nn.Module):
         self.is_conv1d = is_conv1d
 
         # Apply SVD to the layer's weight matrix
+        # Apply SVD to the layer's weight matrix
         if os.path.exists(self.accelerator_checkpoint_path):
             accelerator_checkpoint = torch.load(self.accelerator_checkpoint_path)
-            self.U = accelerator_checkpoint["U"]
-            self.S = accelerator_checkpoint["S"]
-            self.V_T = accelerator_checkpoint["V_T"]
+            self.U = nn.Parameter(accelerator_checkpoint["U"])
+            self.S = nn.Parameter(accelerator_checkpoint["S"])
+            self.V_T = nn.Parameter(accelerator_checkpoint["V_T"])
         else:
-            self.U, self.S, self.V_T = torch.linalg.svd(layer.weight, full_matrices=False)
-            self.U = self.U[:, :self.k]
-            self.S = self.S[:self.k]
-            self.V_T = self.V_T[:self.k, :]
+            U, S, V_T = torch.linalg.svd(layer.weight, full_matrices=False)
+            U = U[:, :k]
+            S = S[:k]
+            V_T = V_T[:k, :]
+            self.U = nn.Parameter(U)
+            self.S = nn.Parameter(S)
+            self.V_T = nn.Parameter(V_T)
             os.makedirs(os.path.dirname(self.accelerator_checkpoint_path), exist_ok=True)
             torch.save(
-                {"U": self.U, "S": self.S, "V_T": self.V_T}, self.accelerator_checkpoint_path)
+                {"U": self.U.data, "S": self.S.data, "V_T": self.V_T.data}, self.accelerator_checkpoint_path)
 
     def forward(self, x):
         if self.is_conv1d:
@@ -39,3 +43,19 @@ class SVDWrapper(nn.Module):
             xV = F.linear(x, self.V_T)
             xVSU_T = F.linear(xV, self.S[None, :] * self.U)
             return xVSU_T
+
+    def state_dict(self, destination=None, prefix='', keep_vars=False):
+        state_dict = super().state_dict(destination, prefix, keep_vars)
+        state_dict[prefix + 'U'] = self.U.detach() if not keep_vars else self.U
+        state_dict[prefix + 'S'] = self.S.detach() if not keep_vars else self.S
+        state_dict[prefix + 'V_T'] = self.V_T.detach() if not keep_vars else self.V_T
+        return state_dict
+
+    def load_state_dict(self, state_dict, strict=True):
+        self.U.data.copy_(state_dict['U'])
+        self.S.data.copy_(state_dict['S'])
+        self.V_T.data.copy_(state_dict['V_T'])
+        del state_dict['U']
+        del state_dict['S']
+        del state_dict['V_T']
+        super().load_state_dict(state_dict, strict)
