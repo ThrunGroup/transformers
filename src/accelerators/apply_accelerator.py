@@ -1,5 +1,6 @@
 import os
 from typing import List
+from tqdm import tqdm
 
 from accelerators.accelerator_factory import AcceleratorFactory
 from utils.constants import TRANSFORMER_XL, GPT2, GPT2_LARGE
@@ -23,6 +24,9 @@ def apply_accelerator(model_name: str, model,
     if accelerator_type is None:
         return
 
+    if layers_to_accelerate is None:
+        layers_to_accelerate = list(range(100))  # Hard-coded
+
     accelerated_layers = []
 
     accelerator = AcceleratorFactory().get_accelerator(accelerator_type)
@@ -41,7 +45,7 @@ def apply_accelerator(model_name: str, model,
         checkpoint_dir = os.path.join(os.path.dirname(__file__), model_name)
 
         k = accelerator_args["k"]
-        for i, block in enumerate(model.transformer.h):
+        for i, block in tqdm(enumerate(model.transformer.h)):
             if i in layers_to_accelerate:
                 # Only accelerate the specified layers
                 checkpoint_path = os.path.join(checkpoint_dir, f"layer_{i}")
@@ -52,7 +56,7 @@ def apply_accelerator(model_name: str, model,
                     block.mlp.c_proj, k=k, checkpoint_path=checkpoint_path + "_c_proj", is_conv1d=True
                 )
                 accelerated_layers.extend([f"transformer.h.{i}.mlp.c_fc", f"transformer.h.{i}.mlp.c_proj"])
-        # checkpoint_path = os.path.join(checkpoint_dir, f"lm_head")
-        # model.lm_head = accelerator(model.lm_head, k=k, checkpoint_path=checkpoint_path, is_conv1d=False)
+        checkpoint_path = os.path.join(checkpoint_dir, f"lm_head")
+        model.lm_head = accelerator(model.lm_head, k=k, checkpoint_path=checkpoint_path, is_conv1d=False)
 
     return accelerated_layers

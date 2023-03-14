@@ -11,3 +11,4 @@ PCA = "PCA"
 
 # datasets
 BILLSUM = "billsum"
+WIKITEXT2 = "wikitext-2-raw-v1"
