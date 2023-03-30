@@ -23,7 +23,7 @@ class Billsum(Dataset):
         Load and build a simple summarization dataset
         :return: tokenized dataset, data collator, and compute_metrics function
         """
-        dataset = load_dataset("billsum", split="ca_test")
+        dataset = load_dataset("billsum", split="train[:100]")
         dataset = dataset.train_test_split(test_size=0.2)
 
         tokenized_dataset = dataset.map(self.preprocess, batched=True)
