@@ -1,7 +1,6 @@
 from transformers import AutoTokenizer, TransfoXLLMHeadModel, GPT2LMHeadModel, GPT2Tokenizer
 import torch
 import os
-import ast
 
 from utils.constants import TRANSFORMER_XL, GPT2, GPT2_LARGE, NUM_BLOCKS_GPT2, SVD
 from utils.parse_string import get_model_type, parse_string, string_to_dict
@@ -22,7 +21,9 @@ def get_naive_model_and_tokenizer(model_name: str):
     elif GPT2 in model_name:
         tokenizer = GPT2Tokenizer.from_pretrained(model_name)
         tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+
         model = GPT2LMHeadModel.from_pretrained(model_name, pad_token_id=tokenizer.eos_token_id)
+
     else:
         assert False, "No such model"
 

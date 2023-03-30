@@ -11,6 +11,8 @@ PCA = "PCA"
 
 # datasets
 BILLSUM = "billsum"
+SQUAD = "squad"
+OPENWEBTEXT = 'openwebtext'
 
 # Number of blocks
 NUM_BLOCKS_GPT2 = 12

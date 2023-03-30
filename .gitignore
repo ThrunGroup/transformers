@@ -1,5 +1,9 @@
 # Initially taken from Github's Python gitignore file
 
+# Checkpoints
+src/experiments/checkpoints/*
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

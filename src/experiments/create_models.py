@@ -1,5 +1,5 @@
-import sys, os
-# sys.path.remove('/sailhome/lukeai/PIMABs')
+import os
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "0:1024"
 from transformers import Trainer, TrainingArguments
 from typing import List
 
@@ -7,8 +7,23 @@ from accelerators.apply_accelerator import apply_accelerator
 from data.get_dataset import get_dataset
 from load_models import get_naive_model_and_tokenizer
 from evaluate_models import evaluate_model
-from utils.constants import SVD, GPT2, BILLSUM, NUM_BLOCKS_GPT2
 from utils.parse_string import parse_string, dict_to_string
+from utils.constants import (
+    # Accelerators
+    SVD,
+
+    # Models
+    GPT2,
+    GPT2_MEDIUM,
+
+    # Parameters
+    NUM_BLOCKS_GPT2,
+
+    # Datasets
+    BILLSUM,
+    OPENWEBTEXT,
+    SQUAD,
+)
 
 
 def freeze_layers(model,
@@ -54,7 +69,10 @@ def finetune(model_name: str, model, tokenizer, dataset_name: str, num_epochs: i
     :param resume_from_checkpoint: Whether to resume the training from the checkpoint
     :param do_evaluation: Whether to evaluate the model after training and save the metrics
     """
-    dataset, data_collator, compute_metrics = get_dataset(dataset_name, tokenizer, model)
+    dataset = get_dataset(dataset_name, tokenizer, model)
+    train_dataset, test_dataset = dataset.get_tokenized_dataset()
+    data_collator = dataset.get_data_collator()
+    compute_metrics = dataset.get_compute_metrics()
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
     checkpoint_path = os.path.join(current_dir, "checkpoints", model_name)
@@ -64,8 +82,8 @@ def finetune(model_name: str, model, tokenizer, dataset_name: str, num_epochs: i
         evaluation_strategy="epoch",
         save_strategy="epoch",
         learning_rate=2e-5,
-        per_device_train_batch_size=16,
-        per_device_eval_batch_size=16,
+        per_device_train_batch_size=3,
+        per_device_eval_batch_size=1,
         weight_decay=0.01,
         num_train_epochs=num_epochs,
         logging_dir="exp_logs",
@@ -78,8 +96,8 @@ def finetune(model_name: str, model, tokenizer, dataset_name: str, num_epochs: i
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=dataset["train"],
-        eval_dataset=dataset["test"],
+        train_dataset=train_dataset,
+        eval_dataset=test_dataset,
         tokenizer=tokenizer,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
@@ -95,7 +113,7 @@ def finetune(model_name: str, model, tokenizer, dataset_name: str, num_epochs: i
         evaluate_model(model_name, dataset_name,
                        model=model,
                        tokenizer=tokenizer,
-                       dataset=dataset,
+                       test_dataset=test_dataset,
                        trainer=trainer)
 
 
@@ -105,6 +123,7 @@ def create_model(model_type: str,
                  layers_to_freeze: str = None,
                  layers_to_accelerate: str = None,
                  train_accelerated_layers: bool = False,
+                 do_evaluation: bool = True,
                  accelerator_type: str = None,
                  **accelerator_args):
     """
@@ -113,9 +132,11 @@ def create_model(model_type: str,
 
     :param model_type: Type of the model (TXL, GPT, etc.)
     :param dataset_name: Name of the dataset to train on
+    :param num_epochs: Number of epochs to finetune the model
     :param layers_to_freeze: Layers to freeze (e.g. "1-3,7,9" freezes the 1,2,3,7,9th layer)
     :param layers_to_accelerate: Layers to accelerate (e.g. "1-3,7,9" accelerates the 1,2,3,7,9th layer)
     :param train_accelerated_layers: Whether to train the accelerated layers. If true, these layers will not be frozen.
+    :param do_evaluation: Whether to evaluate the model after training and save the metrics
     :param accelerator_type: Type of the accelerator to apply (None, SVD, etc.)
     :param accelerator_args: Optional arguments for the accelerator
     """
@@ -129,6 +150,7 @@ def create_model(model_type: str,
                  f"_{accelerator_args_string}" \
                  f"_accelerated_{layers_to_accelerate}" \
                  f"_froze_{layers_to_freeze}" \
+                 f"_epochs_{num_epochs}" \
                  f"_dataset_{dataset_name}"
 
     if train_accelerated_layers:
@@ -149,22 +171,50 @@ def create_model(model_type: str,
     accelerated_layers = apply_accelerator(model_type, model, layers_to_accelerate, accelerator_type,
                                            **accelerator_args)
     freeze_layers(model, layers_to_freeze, train_accelerated_layers, accelerated_layers)
-    finetune(model_name, model, tokenizer, dataset_name, num_epochs)
+    finetune(model_name, model, tokenizer, dataset_name, num_epochs, do_evaluation=do_evaluation)
 
 
 if __name__ == "__main__":
     # Train a model without any accelerator
     # create_model(model_type=GPT2,
-    #              dataset_name=BILLSUM,
-    #              num_epochs=15,
+    #              dataset_name=OPENWEBTEXT,
+    #              num_epochs=1,
     #              layers_to_freeze=f"0-{NUM_BLOCKS_GPT2 - 2}")
 
     # Only train the accelerated FC layer and the very final linear layer
     create_model(model_type=GPT2,
                  dataset_name=BILLSUM,
                  num_epochs=5,
-                 layers_to_freeze=f"0-{NUM_BLOCKS_GPT2 - 2}",
-                 layers_to_accelerate=f"{NUM_BLOCKS_GPT2 - 1}",
+                 layers_to_freeze=f"0-{NUM_BLOCKS_GPT2 - 3}",
+                 layers_to_accelerate=f"{NUM_BLOCKS_GPT2 - 3}-{NUM_BLOCKS_GPT2 - 1}",
                  train_accelerated_layers=True,
                  accelerator_type=SVD,
-                 k=32)
+                 k=64)
+
+    # create_model(model_type=GPT2,
+    #              dataset_name=BILLSUM,
+    #              num_epochs=3,
+    #              layers_to_freeze=f"1-{NUM_BLOCKS_GPT2 - 2}",
+    #              layers_to_accelerate=f"0",
+    #              train_accelerated_layers=True,
+    #              accelerator_type=SVD,
+    #              k=64)
+
+    # create_model(model_type=GPT2,
+    #              dataset_name=BILLSUM,
+    #              num_epochs=3,
+    #              layers_to_freeze=f"0-{NUM_BLOCKS_GPT2 - 2}",
+    #              layers_to_accelerate=f"{NUM_BLOCKS_GPT2 - 1}",
+    #              train_accelerated_layers=True,
+    #              accelerator_type=SVD,
+    #              k=128)
+    #
+    # create_model(model_type=GPT2,
+    #              dataset_name=BILLSUM,
+    #              num_epochs=3,
+    #              layers_to_freeze=f"0-{NUM_BLOCKS_GPT2 - 2}",
+    #              layers_to_accelerate=f"{NUM_BLOCKS_GPT2 - 1}",
+    #              train_accelerated_layers=True,
+    #              accelerator_type=SVD,
+    #              k=256)
+

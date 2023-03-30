@@ -16,7 +16,7 @@ def evaluate_model(model_name: str,
                    log_dir_name: str = "exp_logs",
                    model=None,
                    tokenizer=None,
-                   dataset=None,
+                   test_dataset=None,
                    trainer=None):
     """
     Evaluate a model on a dataset
@@ -26,10 +26,10 @@ def evaluate_model(model_name: str,
     :param log_dir_name: Directory to save the logs
     :param model: The PyTorch Model to evaluate
     :param tokenizer: Tokenizer to tokenize the dataset
-    :param dataset: Dataset to evaluate the model on
+    :param test_dataset: Dataset to evaluate the model on
     :param trainer: HuggingFace Trainer to evaluate the model
     """
-    if not (model and tokenizer and dataset and trainer):
+    if not (model and tokenizer and test_dataset and trainer):
         # Load the model, tokenizer, dataset, and trainer if not provided
         # This block is executed usually when running this function as its own outside `create_model`
 
@@ -39,7 +39,10 @@ def evaluate_model(model_name: str,
         model = load_model(model_name)
 
         # Get dataset
-        dataset, data_collator, compute_metrics = get_dataset(dataset_name, tokenizer, model)
+        dataset = get_dataset(dataset_name, tokenizer, model)
+        _, test_dataset = dataset.get_tokenized_dataset()
+        data_collator = dataset.get_data_collator()
+        compute_metrics = dataset.get_compute_metrics()
 
         # Set up the evaluation pipeline
         trainer = Trainer(
@@ -51,7 +54,7 @@ def evaluate_model(model_name: str,
 
     # Evaluate
     start_time = time.time()
-    metrics = trainer.evaluate(eval_dataset=dataset["test"])
+    metrics = trainer.evaluate(eval_dataset=test_dataset)
     end_time = time.time()
     inference_time = end_time - start_time
 
@@ -75,6 +78,7 @@ def evaluate_model(model_name: str,
     )
     os.makedirs(log_dir, exist_ok=True)
     log_df.to_csv(filename, index=False)
+    print("Saved the file to ", filename)
 
 
 def inference_pipeline(
@@ -113,7 +117,12 @@ def inference_pipeline(
 
 if __name__ == "__main__":
     # Get one checkpoint
-    checkpoint_models = [list_checkpoint_models()[1]]
+    print(list_checkpoint_models())
+    checkpoint_models = [
+        # "gpt2_None__accelerated_None_froze_0-10_dataset_billsum",
+        "gpt2_SVD_k:64_accelerated_11_froze_0-10_dataset_billsum_trained_accelerated_layers",
+    ]
+
     for model in checkpoint_models:
         # model_name = checkpoint_models[-1]
         print("Evaluating ", model)

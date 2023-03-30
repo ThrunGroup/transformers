@@ -1,5 +1,7 @@
-from .get_billsum_dataset import get_billsum_dataset
-from utils.constants import BILLSUM
+from .get_billsum_dataset import Billsum
+from .get_squad_dataset import SQuAD
+from .get_openwebtext_dataset import OpenWebText
+from utils.constants import BILLSUM, SQUAD, OPENWEBTEXT
 
 
 def get_dataset(dataset_name: str, tokenizer, model):
@@ -12,6 +14,12 @@ def get_dataset(dataset_name: str, tokenizer, model):
     :return: tokenized dataset, data collator, and compute_metrics function
     """
     if dataset_name == BILLSUM:
-        return get_billsum_dataset(tokenizer, model)
+        dataset = Billsum(tokenizer, model)
+    elif dataset_name == SQUAD:
+        dataset = SQuAD(tokenizer, model)
+    elif dataset_name == OPENWEBTEXT:
+        dataset = OpenWebText(tokenizer, model)
+    else:
+        assert False, f"No dataset named {dataset_name} available."
 
-    assert False, f"No dataset named {dataset_name} available."
+    return dataset
