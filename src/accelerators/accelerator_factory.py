@@ -1,7 +1,7 @@
-from .svd import SVDWrapper
-from .pca import PCAWrapper
-from .vanilla import VanillaWrapper
-from .simple_quantization_wrapper import QuantizationWrapper
+from accelerators.svd import SVDWrapper
+from accelerators.pca import PCAWrapper
+from accelerators.vanilla import VanillaWrapper
+from accelerators.simple_quantization_wrapper import QuantizationWrapper
 from utils.constants import SVD, PCA, QUANTIZATION
 
 
