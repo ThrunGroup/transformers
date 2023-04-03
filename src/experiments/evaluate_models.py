@@ -21,6 +21,11 @@ from utils.constants import (
     OPT_350M,
     OPT_125M,
     OPT,
+    BLOOM,
+    BLOOM_560M,
+    BLOOM_1b,
+    BLOOM_3b,
+    BLOOM_7b1,
     EXAMPLE_INPUT,
     StaticQ,
     DynamicQ,
@@ -182,6 +187,8 @@ def inference_perplexity(
             max_length = model.config.n_positions
         elif OPT in model_name:
             max_length = model.config.max_position_embeddings
+        else:
+            max_length = stride
         stride = stride
         seq_len = encodings.input_ids.size(1)
 
@@ -236,7 +243,7 @@ def inference_perplexity(
 
 
 if __name__ == "__main__":
-    inference_perplexity([OPT_125M], [None])
+    inference_perplexity([BLOOM_560M], [None, QUANTIZATION])
     # inference_perplexity([OPT_350M], [None, QUANTIZATION])
     # # Get one checkpoint
     # checkpoint_models = [list_checkpoint_models()[1]]

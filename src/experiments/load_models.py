@@ -1,9 +1,9 @@
-from transformers import AutoTokenizer, TransfoXLLMHeadModel, GPT2LMHeadModel, GPT2Tokenizer, OPTForCausalLM
+from transformers import AutoTokenizer, TransfoXLLMHeadModel, BloomForCausalLM, GPT2LMHeadModel, GPT2Tokenizer, OPTForCausalLM
 import torch
 import os
 import ast
 
-from utils.constants import TRANSFORMER_XL, GPT2, GPT2_LARGE, NUM_BLOCKS_GPT2, SVD, OPT, OPT_350M
+from utils.constants import TRANSFORMER_XL, GPT2, GPT2_LARGE, NUM_BLOCKS_GPT2, SVD, OPT, BLOOM
 from utils.parse_string import get_model_type, parse_string, string_to_dict
 from accelerators.apply_accelerator import apply_accelerator
 
@@ -28,6 +28,11 @@ def get_naive_model_and_tokenizer(model_name: str):
             "facebook/" + model_name, use_fast=False
         )  # use_fast = False to get correct tokenizer
         model = OPTForCausalLM.from_pretrained("facebook/" + model_name)
+    elif BLOOM in model_name:
+        tokenizer = AutoTokenizer.from_pretrained(
+            "bigscience/" + model_name, use_fast=False
+        )
+        model = BloomForCausalLM.from_pretrained("bigscience/" + model_name)
     else:
         assert False, "No such model"
 
