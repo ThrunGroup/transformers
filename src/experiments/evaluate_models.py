@@ -17,6 +17,8 @@ from utils.constants import (
     WIKITEXT2,
     QUANTIZATION,
     SVD,
+    OPT_13B,
+    OPT_30B,
     OPT_1_3B,
     OPT_350M,
     OPT_125M,
@@ -243,7 +245,7 @@ def inference_perplexity(
 
 
 if __name__ == "__main__":
-    inference_perplexity([BLOOM_560M], [None, QUANTIZATION])
+    inference_perplexity([OPT_125M, OPT_350M, OPT_1_3B, OPT_13B, OPT_30B], [None, QUANTIZATION])
     # inference_perplexity([OPT_350M], [None, QUANTIZATION])
     # # Get one checkpoint
     # checkpoint_models = [list_checkpoint_models()[1]]
