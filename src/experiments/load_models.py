@@ -1,9 +1,9 @@
-from transformers import AutoTokenizer, TransfoXLLMHeadModel, GPT2LMHeadModel, GPT2Tokenizer
+from transformers import AutoTokenizer, TransfoXLLMHeadModel, GPT2LMHeadModel, GPT2Tokenizer, OPTForCausalLM
 import torch
 import os
 import ast
 
-from utils.constants import TRANSFORMER_XL, GPT2, GPT2_LARGE, NUM_BLOCKS_GPT2, SVD
+from utils.constants import TRANSFORMER_XL, GPT2, GPT2_LARGE, NUM_BLOCKS_GPT2, SVD, OPT, OPT_350M
 from utils.parse_string import get_model_type, parse_string, string_to_dict
 from accelerators.apply_accelerator import apply_accelerator
 
@@ -21,8 +21,13 @@ def get_naive_model_and_tokenizer(model_name: str):
         tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
     elif GPT2 in model_name:
         tokenizer = GPT2Tokenizer.from_pretrained(model_name)
-        tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        tokenizer.add_special_tokens({"pad_token": "[PAD]"})
         model = GPT2LMHeadModel.from_pretrained(model_name, pad_token_id=tokenizer.eos_token_id)
+    elif OPT in model_name:
+        tokenizer = AutoTokenizer.from_pretrained(
+            "facebook/" + model_name, use_fast=False
+        )  # use_fast = False to get correct tokenizer
+        model = OPTForCausalLM.from_pretrained("facebook/" + model_name)
     else:
         assert False, "No such model"
 
@@ -63,12 +68,12 @@ def load_model(model_name: str):
     str_accelerator_args = model_keywords[2]
     accelerator_args = string_to_dict(str_accelerator_args)
 
-    str_layers_to_accelerate = model_keywords[4]
-    if str_layers_to_accelerate != "None":
-        layers_to_accelerate = parse_string(str_layers_to_accelerate)
-
-        apply_accelerator(model_type, model, layers_to_accelerate, accelerator_type,
-                          **accelerator_args)
+    # str_layers_to_accelerate = model_keywords[4]
+    # if str_layers_to_accelerate != "None":
+    #     layers_to_accelerate = parse_string(str_layers_to_accelerate)
+    #
+    #     apply_accelerator(model_type, model, layers_to_accelerate, accelerator_type,
+    #                       **accelerator_args)
 
     # Load the checkpoint
     checkpoint_path = os.path.join(model_path, "pytorch_model.bin")
@@ -92,6 +97,6 @@ def list_checkpoint_models():
     return os.listdir(checkpoint_path)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     model_name = "gpt2_SVD_{'k': 10}_accelerated_11_froze_0-10_dataset_billsum_trained_accelerated_layers"
     new_model = load_model(model_name)

@@ -35,6 +35,13 @@ def get_model_type(model_name: str = None):
             return model_type
 
 
+def get_subsampling_ratio(model_name: str = None):
+    return float(model_name.split("subsampling_ratio_")[-1].split("_")[0])
+
+def get_seed(model_name: str = None):
+    return int(model_name.split("seed_")[-1].split("_")[0])
+
+
 def string_to_dict(s: str) -> dict:
     """
     Convert a string of accelerator arguments into a dictionary.
@@ -72,4 +79,6 @@ def dict_to_string(dic: dict) -> str:
     """
     if dic == None:
         return "None"
-    return ",".join([f"{k}:{v}" for (k, v) in dic.items()])
+    colon = chr(0x0000A789) # colon is invalid in windows, so similar character is used
+    return ",".join([f"{k}_{v}" for (k, v) in dic.items()])
+

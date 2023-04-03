@@ -1,7 +1,8 @@
 from .svd import SVDWrapper
 from .pca import PCAWrapper
 from .vanilla import VanillaWrapper
-from utils.constants import SVD, PCA
+from .simple_quantization_wrapper import QuantizationWrapper
+from utils.constants import SVD, PCA, QUANTIZATION
 
 
 class AcceleratorFactory:
@@ -11,6 +12,8 @@ class AcceleratorFactory:
             return SVDWrapper
         elif type == PCA:
             return PCAWrapper
+        elif type == QUANTIZATION:
+            return QuantizationWrapper
         elif type is None:
             return VanillaWrapper
         else:

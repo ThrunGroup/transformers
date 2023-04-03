@@ -1,19 +1,37 @@
 from transformers import DataCollatorForSeq2Seq
 import evaluate
 import numpy as np
+import datasets
 
 from datasets import load_dataset
 
 
-def get_billsum_dataset(tokenizer, model):
+def get_billsum_dataset(
+    tokenizer, model, train_sample_ratio: int = 1, test_sample_ratio: int = 1, subsample_seed: int = 0
+):
     """
     Load and build a simple summarization dataset
     :param tokenizer: Tokenizer to tokenize the inputs
     :param model: Model to finetune / evaluate
+    :param train_sample_ratio: Sample size (proportion) of train data.
+    :param test_sample_ratio: Sample size (proportion) of test data.
+    :param subsample_seed: random seed of subsampling
     :return: tokenized dataset, data collator, and compute_metrics function
     """
     dataset = load_dataset("billsum", split="ca_test")
     dataset = dataset.train_test_split(test_size=0.2)
+
+    # Subsampling dataset
+    dataset.shuffle(seed=subsample_seed)
+    train_size = int(len(dataset["train"]["text"]) * train_sample_ratio)
+    test_size = int(len(dataset["test"]["text"]) * test_sample_ratio)
+    print(dataset)
+
+    subsampled_dataset = {"train": [], "test": []}
+    subsampled_dataset["train"] = dataset["train"].select(range(train_size))
+    subsampled_dataset["test"] = dataset["test"].select(range(test_size))
+    subsampled_dataset = datasets.DatasetDict(subsampled_dataset)
+    print(subsampled_dataset)
 
     prefix = "summarize: "
     rouge = evaluate.load("rouge")
@@ -43,7 +61,7 @@ def get_billsum_dataset(tokenizer, model):
 
         return {k: round(v, 4) for k, v in result.items()}
 
-    tokenized_dataset = dataset.map(_preprocess_function, batched=True)
+    tokenized_dataset = subsampled_dataset.map(_preprocess_function, batched=True)
     data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model=model)
 
     return tokenized_dataset, data_collator, _compute_metrics

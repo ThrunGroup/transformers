@@ -1,12 +1,13 @@
 import os
+import torch
 from typing import List
 
 from accelerators.accelerator_factory import AcceleratorFactory
-from utils.constants import TRANSFORMER_XL, GPT2, GPT2_LARGE
+from utils.constants import TRANSFORMER_XL, GPT2, GPT2_LARGE, OPT, OPT_350M, QUANTIZATION
 
 
 def apply_accelerator(model_name: str,
-                      model,
+                      model: torch.nn.Module,
                       layers_to_accelerate: List[int] = None,
                       accelerator_type: str = None,
                       **accelerator_args):
@@ -18,12 +19,15 @@ def apply_accelerator(model_name: str,
     :param layers_to_accelerate: Which layers to accelerate
     :param accelerator_type: Name of the accelerator technique to use
     :param accelerator_args: Optional arguments for the accelerator
-    :return List of names of the accelerated layers
+    :return Model, List of names of the accelerated layers
     """
-    if accelerator_type is None:
-        return
-
     accelerated_layers = []
+
+    if accelerator_type is None:
+        return model, accelerated_layers
+
+    if layers_to_accelerate is None:
+        layers_to_accelerate = list(range(100))  # Hard-coded
 
     accelerator = AcceleratorFactory().get_accelerator(accelerator_type)
     if model_name == TRANSFORMER_XL:
@@ -41,6 +45,7 @@ def apply_accelerator(model_name: str,
         checkpoint_dir = os.path.join(os.path.dirname(__file__), model_name)
 
         k = accelerator_args["k"]
+
         for i, block in enumerate(model.transformer.h):
             if i in layers_to_accelerate:
                 # Only accelerate the specified layers
@@ -55,4 +60,5 @@ def apply_accelerator(model_name: str,
         # checkpoint_path = os.path.join(checkpoint_dir, f"lm_head")
         # model.lm_head = accelerator(model.lm_head, k=k, checkpoint_path=checkpoint_path, is_conv1d=False)
 
-    return accelerated_layers
+
+    return model, accelerated_layers
