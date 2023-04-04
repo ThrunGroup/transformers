@@ -34,7 +34,7 @@ def get_naive_model_and_tokenizer(model_name: str, load_in_8bit:bool = False):
         tokenizer = AutoTokenizer.from_pretrained(
             "facebook/" + model_name, use_fast=False
         )  # use_fast = False to get correct tokenizer
-        model = OPTForCausalLM.from_pretrained("facebook/" + model_name, device='auto')# device_map="auto",)
+        model = OPTForCausalLM.from_pretrained("facebook/" + model_name, device_map='auto')# device_map="auto",)
     elif BLOOM in model_name:
         tokenizer = AutoTokenizer.from_pretrained("bigscience/" + model_name, use_fast=False)
         model = BloomForCausalLM.from_pretrained("bigscience/" + model_name, load_in_8bit=load_in_8bit)# device_map="auto",)
