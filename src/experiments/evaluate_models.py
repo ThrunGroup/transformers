@@ -32,6 +32,7 @@ from utils.constants import (
     EXAMPLE_INPUT,
     StaticQ,
     DynamicQ,
+    QUANTIZATION_GPU,
 )
 from utils.utils import print_size_of_model
 from utils.parse_string import get_model_type, get_subsampling_ratio, get_seed
@@ -166,14 +167,16 @@ def inference_perplexity(
     tokenizers = {}
     for model_name in model_names:
         for accelerator in accelerators:
-            model, tokenizer = get_naive_model_and_tokenizer(model_name)
-            if accelerator == QUANTIZATION:
-                model = quantization(model, DynamicQ)
-
+            if accelerator == QUANTIZATION_GPU:
+                model, tokenizer = get_naive_model_and_tokenizer(model_name, load_in_8bit=True)
             else:
-                apply_accelerator(model_name, model, accelerator_type=accelerator, k=10)
-            print(f"{model_name} + {accelerator} size:")
-            print_size_of_model(model)
+                model, tokenizer = get_naive_model_and_tokenizer(model_name, load_in_8bit=False)
+                if accelerator == QUANTIZATION:
+                    model = quantization(model, DynamicQ)
+                else:
+                    apply_accelerator(model_name, model, accelerator_type=accelerator, k=10)
+            # print(f"{model_name} + {accelerator} size:")
+            # print_size_of_model(model)
             new_model_name = model_name + f"+{accelerator}"
             models[new_model_name] = model
             tokenizers[new_model_name] = tokenizer
@@ -246,7 +249,7 @@ def inference_perplexity(
 
 
 if __name__ == "__main__":
-    inference_perplexity([OPT_1_3B], [ None])
+    inference_perplexity([OPT_125M, OPT_350M, OPT_1_3B, BLOOM_560M], [QUANTIZATION_GPU, None])
     # inference_perplexity([OPT_350M], [None, QUANTIZATION])
     # # Get one checkpoint
     # checkpoint_models = [list_checkpoint_models()[1]]

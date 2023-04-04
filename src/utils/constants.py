@@ -23,6 +23,7 @@ BLOOM_7b1 = "bloom-7b1"
 SVD = "SVD"
 PCA = "PCA"
 QUANTIZATION = "QUANTIZATION"
+QUANTIZATION_GPU = "QUANTIZATION_GPU"
 
 # Quantization types
 DynamicQ = "Dynamic Quantization"
