@@ -229,7 +229,7 @@ def inference_perplexity(
             prev_end_loc = end_loc
             if end_loc == seq_len:
                 break
-
+        nlls = nlls.cuda()
         ppl = torch.exp(torch.stack(nlls).sum() / end_loc)
         inference_time /= num_samples
 
