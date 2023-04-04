@@ -171,10 +171,10 @@ def inference_perplexity(
                 model, tokenizer = get_naive_model_and_tokenizer(model_name, load_in_8bit=True)
             else:
                 model, tokenizer = get_naive_model_and_tokenizer(model_name, load_in_8bit=False)
-                if accelerator == QUANTIZATION:
-                    model = quantization(model, DynamicQ)
-                else:
-                    apply_accelerator(model_name, model, accelerator_type=accelerator, k=10)
+                # if accelerator == QUANTIZATION:
+                #     model = quantization(model, DynamicQ)
+                # else:
+                #     apply_accelerator(model_name, model, accelerator_type=accelerator, k=10)
             # print(f"{model_name} + {accelerator} size:")
             # print_size_of_model(model)
             new_model_name = model_name + f"+{accelerator}"
