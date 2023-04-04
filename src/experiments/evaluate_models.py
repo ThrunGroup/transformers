@@ -246,7 +246,7 @@ def inference_perplexity(
 
 
 if __name__ == "__main__":
-    inference_perplexity([OPT_125M, OPT_350M, BLOOM_560M], [QUANTIZATION, None])
+    inference_perplexity([OPT_1_3B], [ None])
     # inference_perplexity([OPT_350M], [None, QUANTIZATION])
     # # Get one checkpoint
     # checkpoint_models = [list_checkpoint_models()[1]]
