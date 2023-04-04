@@ -129,7 +129,7 @@ def inference_pipeline(
             else:
                 apply_accelerator(model_name, model, accelerator_type=accelerator, k=10)
             print(f"{model_name} size:")
-            print_size_of_model(model)
+            # print_size_of_model(model)
             new_model_name = model_name + f" + {accelerator}"
             models[new_model_name] = model
             tokenizers[new_model_name] = tokenizer
@@ -172,7 +172,7 @@ def inference_perplexity(
             else:
                 apply_accelerator(model_name, model, accelerator_type=accelerator, k=10)
             print(f"{model_name} + {accelerator} size:")
-            print_size_of_model(model)
+            # print_size_of_model(model)
             new_model_name = model_name + f"+{accelerator}"
             models[new_model_name] = model
             tokenizers[new_model_name] = tokenizer
