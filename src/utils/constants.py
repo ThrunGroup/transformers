@@ -15,8 +15,8 @@ OPT_30B = "opt-30b"
 BLOOM = "bloom"
 BLOOM_560M = "bloom-560m"
 BLOOM_1b = "bloom-1b1"
-BLOOM_3b = "bloom_3b"
-BLOOM_7b1 = "bloom_7b1"
+BLOOM_3b = "bloom-3b"
+BLOOM_7b1 = "bloom-7b1"
 
 
 # accelerators

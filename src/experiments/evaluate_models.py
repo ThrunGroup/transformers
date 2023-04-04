@@ -117,8 +117,8 @@ def inference_pipeline(
     models = {}
     tokenizers = {}
     torch.no_grad()
-    for accelerator in accelerators:
-        for model_name in model_names:
+    for model_name in model_names:
+        for accelerator in accelerators:
             model, tokenizer = get_naive_model_and_tokenizer(model_name)
             if accelerator == QUANTIZATION:
                 model = quantization(
@@ -163,8 +163,8 @@ def inference_perplexity(
     # Set up the tokenizer and models
     models = {}
     tokenizers = {}
-    for accelerator in accelerators:
-        for model_name in model_names:
+    for model_name in model_names:
+        for accelerator in accelerators:
             model, tokenizer = get_naive_model_and_tokenizer(model_name)
             if accelerator == QUANTIZATION:
                 model = quantization(model, DynamicQ)
@@ -245,7 +245,7 @@ def inference_perplexity(
 
 
 if __name__ == "__main__":
-    inference_perplexity([OPT_125M, OPT_350M, OPT_1_3B, OPT_13B, BLOOM_560M, BLOOM_1b, BLOOM_3b, BLOOM_7b1], [None, QUANTIZATION])
+    inference_perplexity([OPT_125M, OPT_350M, OPT_1_3B, OPT_13B, BLOOM_560M, BLOOM_1b, BLOOM_3b], [None, QUANTIZATION])
     # inference_perplexity([OPT_350M], [None, QUANTIZATION])
     # # Get one checkpoint
     # checkpoint_models = [list_checkpoint_models()[1]]
