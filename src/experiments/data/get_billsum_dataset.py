@@ -23,7 +23,7 @@ class Billsum(Dataset):
         Load and build a simple summarization dataset
         :return: tokenized dataset, data collator, and compute_metrics function
         """
-        dataset = load_dataset("billsum", split="train[:100]")
+        dataset = load_dataset("billsum", split="train[:3000]",)
         dataset = dataset.train_test_split(test_size=0.2)
 
         tokenized_dataset = dataset.map(self.preprocess, batched=True)
@@ -52,14 +52,10 @@ class Billsum(Dataset):
 
         # TODO: decrease max_length of labels
         #       (but then it raises ValueError: Expected input batch_size (2032) to match target batch_size (496).)
-        labels = self.tokenizer(text_target=examples["summary"], max_length=128, truncation=True)
-
-        # model_inputs["input_ids"] = [ids[:-1] for ids in model_inputs["input_ids"]]
-        # model_inputs["attention_mask"] = [mask[:-1] for mask in model_inputs["attention_mask"]]
-        # # model_inputs["labels"] = labels["input_ids"]
-        # model_inputs["decoder_attention_mask"] = labels["attention_mask"]
+        labels = self.tokenizer(text_target=examples["summary"], padding=True, max_length=128, truncation=True)
 
         model_inputs["labels"] = labels["input_ids"]
+
         return model_inputs
 
     def compute_metrics(self, eval_pred):

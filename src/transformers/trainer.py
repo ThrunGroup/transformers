@@ -2673,7 +2673,8 @@ class Trainer:
         else:
             labels = None
 
-        import ipdb; ipdb.set_trace()
+        # print("input id: ", inputs['input_ids'].shape)
+        # print("labels: ", inputs['labels'].shape)
         outputs = model(**inputs)
         # Save past state if it exists
         # TODO: this needs to be fixed and made cleaner later.

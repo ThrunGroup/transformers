@@ -16,3 +16,4 @@ OPENWEBTEXT = 'openwebtext'
 
 # Number of blocks
 NUM_BLOCKS_GPT2 = 12
+NUM_BLOCKS_GPT2_MEDIUM = 24

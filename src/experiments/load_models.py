@@ -19,8 +19,12 @@ def get_naive_model_and_tokenizer(model_name: str):
         model = TransfoXLLMHeadModel.from_pretrained(pretrained_model)
         tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
     elif GPT2 in model_name:
-        tokenizer = GPT2Tokenizer.from_pretrained(model_name)
-        tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        pad_token = '<PAD>'
+        # tokenizer.add_special_tokens({'pad_token': pad_token})
+        tokenizer.add_tokens('[PAD]')
+        tokenizer.pad_token = pad_token
+        # tokenizer.add_special_tokens({'pad_token': '[PAD]'})
 
         model = GPT2LMHeadModel.from_pretrained(model_name, pad_token_id=tokenizer.eos_token_id)
 
