@@ -6,10 +6,10 @@ from typing import List
 from collections import defaultdict
 
 from evaluate_models import inference_perplexity
-from utils.constants import WIKITEXT2, GPT2, GPT2_MEDIUM, SVD, PCA, BILLSUM
+from utils.constants import WIKITEXT2, GPT2, GPT2_MEDIUM, SVD, PCA, BILLSUM, OPT, BLOOM
 
 
-def perplexity_scaling_plot(dataset: str = WIKITEXT2, log_dir:str = "wikitext-2-raw-v1-n_20-s_1024", acceleration_list: List[str] = ["None", SVD], metric: str= "Perplexity", is_logspace_x: bool = False, is_logspace_y: bool=True,) -> None:
+def perplexity_scaling_plot(dataset: str = WIKITEXT2, model_name: str = GPT2, log_dir:str = "wikitext-2-raw-v1-n_20-s_1024", acceleration_list: List[str] = ["None", SVD], metric: str= "Perplexity", is_logspace_x: bool = False, is_logspace_y: bool=True,) -> None:
     """
     Print scaling plot where x-axis indicates inference time and y-axis indicates evaluation loss.
 
@@ -27,6 +27,8 @@ def perplexity_scaling_plot(dataset: str = WIKITEXT2, log_dir:str = "wikitext-2-
     print(csv_files)
 
     for csv_file in csv_files:
+        if model_name not in csv_file:
+            continue
         data = read_csv(csv_file)
         for plot_idx in range(len(acceleration_list)):
             accelerator = acceleration_list[plot_idx]
@@ -54,4 +56,4 @@ def perplexity_scaling_plot(dataset: str = WIKITEXT2, log_dir:str = "wikitext-2-
 if __name__ == "__main__":
     # inference_perplexity([GPT2, GPT2_MEDIUM], [None, SVD])
     log_dir = os.path.join("evaluation_logs", "wikitext-2-raw-v1-n_20-s_1024")
-    perplexity_scaling_plot(acceleration_list=["None", "QUANTIZATION", "SVD"], log_dir=log_dir, metric="perplexity", is_logspace_y=False, dataset=WIKITEXT2)
+    perplexity_scaling_plot(acceleration_list=["None", "QUANTIZATION"], model_name=OPT, log_dir=log_dir, metric="perplexity", is_logspace_y=False, dataset=WIKITEXT2)
