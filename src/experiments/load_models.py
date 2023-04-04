@@ -1,4 +1,11 @@
-from transformers import AutoTokenizer, TransfoXLLMHeadModel, BloomForCausalLM, GPT2LMHeadModel, GPT2Tokenizer, OPTForCausalLM
+from transformers import (
+    AutoTokenizer,
+    TransfoXLLMHeadModel,
+    BloomForCausalLM,
+    GPT2LMHeadModel,
+    GPT2Tokenizer,
+    OPTForCausalLM,
+)
 import torch
 import os
 import ast
@@ -17,22 +24,20 @@ def get_naive_model_and_tokenizer(model_name: str):
     """
     if model_name == TRANSFORMER_XL:
         pretrained_model = "transfo-xl-wt103"
-        model = TransfoXLLMHeadModel.from_pretrained(pretrained_model)
+        model = TransfoXLLMHeadModel.from_pretrained(pretrained_model, device_map="auto",)
         tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
     elif GPT2 in model_name:
         tokenizer = GPT2Tokenizer.from_pretrained(model_name)
         tokenizer.add_special_tokens({"pad_token": "[PAD]"})
-        model = GPT2LMHeadModel.from_pretrained(model_name, pad_token_id=tokenizer.eos_token_id)
+        model = GPT2LMHeadModel.from_pretrained(model_name, pad_token_id=tokenizer.eos_token_id, device_map="auto",)
     elif OPT in model_name:
         tokenizer = AutoTokenizer.from_pretrained(
             "facebook/" + model_name, use_fast=False
         )  # use_fast = False to get correct tokenizer
-        model = OPTForCausalLM.from_pretrained("facebook/" + model_name)
+        model = OPTForCausalLM.from_pretrained("facebook/" + model_name, device_map="auto",)
     elif BLOOM in model_name:
-        tokenizer = AutoTokenizer.from_pretrained(
-            "bigscience/" + model_name, use_fast=False
-        )
-        model = BloomForCausalLM.from_pretrained("bigscience/" + model_name)
+        tokenizer = AutoTokenizer.from_pretrained("bigscience/" + model_name, use_fast=False)
+        model = BloomForCausalLM.from_pretrained("bigscience/" + model_name, device_map="auto",)
     else:
         assert False, "No such model"
 
