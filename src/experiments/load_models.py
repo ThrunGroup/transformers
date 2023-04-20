@@ -15,7 +15,7 @@ from utils.parse_string import get_model_type, parse_string, string_to_dict
 from accelerators.apply_accelerator import apply_accelerator
 
 
-def get_naive_model_and_tokenizer(model_name: str, load_in_8bit:bool = False):
+def get_naive_model_and_tokenizer(model_name: str, load_in_8bit:bool = False, device_map=None):
     """
     Get the naive model and tokenizer from HuggingFace
 
@@ -34,10 +34,10 @@ def get_naive_model_and_tokenizer(model_name: str, load_in_8bit:bool = False):
         tokenizer = AutoTokenizer.from_pretrained(
             "facebook/" + model_name, use_fast=False
         )  # use_fast = False to get correct tokenizer
-        model = OPTForCausalLM.from_pretrained("facebook/" + model_name, load_in_8bit=load_in_8bit, device_map='auto')# device_map="auto",)
+        model = OPTForCausalLM.from_pretrained("facebook/" + model_name, load_in_8bit=load_in_8bit, device_map=device_map)# device_map="auto",)
     elif BLOOM in model_name:
         tokenizer = AutoTokenizer.from_pretrained("bigscience/" + model_name, use_fast=False)
-        model = BloomForCausalLM.from_pretrained("bigscience/" + model_name, load_in_8bit=load_in_8bit, device_map='auto')# device_map="auto",)
+        model = BloomForCausalLM.from_pretrained("bigscience/" + model_name, load_in_8bit=load_in_8bit, device_map=device_map)# device_map="auto",)
     else:
         assert False, "No such model"
 

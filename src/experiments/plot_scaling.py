@@ -26,7 +26,7 @@ def perplexity_scaling_plot(dataset: str = WIKITEXT2, model_name: str = GPT2, lo
     print(plot_dir)
     print(csv_files)
 
-    for csv_file in csv_files:
+    for csv_file in sorted(csv_files):
         if model_name not in csv_file:
             continue
         data = read_csv(csv_file)
@@ -37,6 +37,7 @@ def perplexity_scaling_plot(dataset: str = WIKITEXT2, model_name: str = GPT2, lo
                 accelerator_data_dict[accelerator][1].extend(data[metric])
 
     for accelerator, plot_data in accelerator_data_dict.items():
+        plot_data[0], plot_data[1] = zip(*sorted(zip(plot_data[0], plot_data[1])))
         plt.plot(
             plot_data[0], plot_data[1], 'o--', label=accelerator
         )
@@ -55,5 +56,5 @@ def perplexity_scaling_plot(dataset: str = WIKITEXT2, model_name: str = GPT2, lo
 
 if __name__ == "__main__":
     # inference_perplexity([GPT2, GPT2_MEDIUM], [None, SVD])
-    log_dir = os.path.join("evaluation_logs", "wikitext-2-raw-v1-n_20-s_1024")
+    log_dir = os.path.join("evaluation_logs", "wikitext-2-raw-v1-n_100-s_100")
     perplexity_scaling_plot(acceleration_list=["None", "QUANTIZATION"], model_name=OPT, log_dir=log_dir, metric="perplexity", is_logspace_y=False, dataset=WIKITEXT2)

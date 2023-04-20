@@ -1,24 +1,23 @@
-from torch import nn
 import torch
 
+from torch import nn
+from optimum.onnxruntime import ORTQuantizer, ORTModelForCausalLM
+from optimum.onnxruntime.configuration import AutoQuantizationConfig
+from pytorch_quantization import quant_modules
+from pytorch_quantization.tensor_quant import QuantDescriptor
+from pytorch_quantization.nn import QuantLinear
 
-class QuantizationWrapper(nn.Module):
-    def __init__(self): #, layer, k, checkpoint_path, is_conv1d: bool = True):
+
+class QuantLinearWrapper(nn.Module):
+    def __init__(self, layer: torch.nn.Linear, use_cuda: bool = False):
         super().__init__()
-        # self.layer = layer
-        # matrix_max = layer.weight.max()
-        # matrix_min = layer.weight.min()
-        # self.scaling_factor = 128 / (matrix_max - matrix_min)
-        # self.weight = layer.weight.data * self.scaling_factor
-        # self.weight = self.weight.int().float()
-        # self.bias = self.layer.bias.data
-        # print(self.weight[:3, :3] / self.scaling_factor)
-        # print(self.layer.weight.size(), self.weight.size(), self.layer.bias.size(), self.bias.size())
+        self.layer = layer
+        self.quant_linear = QuantLinear(layer.in_features, layer.out_features)
+        self.quant_linear.weight = self.layer.weight
+        self.quant_linear.bias = self.layer.bias
+        if use_cuda:
+            print("ang")
+            self.quant_linear = self.quant_linear.cuda()
 
     def forward(self, x):
-
-        # size_out = x.size()[:-1] + (self.layer.nf,)
-        # x = x * self.scaling_factor
-        # x = torch.addmm(self.layer.bias, x.view(-1, x.size(-1)), self.weight)
-        # x = x.view(size_out).float()
-        return x
+        return self.quant_linear(x.cuda())

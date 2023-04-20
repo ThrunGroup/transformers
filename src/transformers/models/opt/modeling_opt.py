@@ -149,7 +149,7 @@ class OPTAttention(nn.Module):
 
     def _shape(self, tensor: torch.Tensor, seq_len: int, bsz: int):
         return tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
-
+    # @profile
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -221,13 +221,11 @@ class OPTAttention(nn.Module):
             attn_weights = attn_weights.view(bsz, self.num_heads, tgt_len, src_len) + attention_mask
             attn_weights = torch.max(attn_weights, torch.tensor(torch.finfo(attn_weights.dtype).min))
             attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
-
         # upcast to fp32 if the weights are in fp16. Please see https://github.com/huggingface/transformers/pull/17437
         if attn_weights.dtype == torch.float16:
             attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(torch.float16)
         else:
             attn_weights = nn.functional.softmax(attn_weights, dim=-1)
-
         if layer_head_mask is not None:
             if layer_head_mask.size() != (self.num_heads,):
                 raise ValueError(
@@ -290,7 +288,7 @@ class OPTDecoderLayer(nn.Module):
         self.fc1 = nn.Linear(self.embed_dim, config.ffn_dim, bias=config.enable_bias)
         self.fc2 = nn.Linear(config.ffn_dim, self.embed_dim, bias=config.enable_bias)
         self.final_layer_norm = nn.LayerNorm(self.embed_dim, elementwise_affine=config.layer_norm_elementwise_affine)
-
+    # @profile
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -347,6 +345,7 @@ class OPTDecoderLayer(nn.Module):
             hidden_states = self.final_layer_norm(hidden_states)
 
         hidden_states = self.fc1(hidden_states)
+        print(torch.sum(hidden_states>0)/ torch.sum(hidden_states<=0))
         hidden_states = self.activation_fn(hidden_states)
 
         hidden_states = self.fc2(hidden_states)
@@ -546,7 +545,7 @@ class OPTDecoder(OPTPreTrainedModel):
             )
 
         return combined_attention_mask
-
+    # @profile
     def forward(
         self,
         input_ids: torch.LongTensor = None,

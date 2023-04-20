@@ -6,6 +6,7 @@ import time
 import os
 import torch
 from torch.ao.quantization import default_dynamic_qconfig, QConfigMapping, get_default_qconfig
+from datasets import Dataset
 
 # Note that this is temporary, we'll expose these functions to torch.ao.quantization after official releasee
 from torch.quantization.quantize_fx import prepare_fx, convert_fx
@@ -33,13 +34,17 @@ from utils.constants import (
     StaticQ,
     DynamicQ,
     QUANTIZATION_GPU,
+    QUANTIZATION_NVIDIA,
+    PRUNING,
 )
 from utils.utils import print_size_of_model
 from utils.parse_string import get_model_type, get_subsampling_ratio, get_seed
-from accelerators.quantization import quantization
+from accelerators.quantization import quantization, collect_stats, compute_amax
 from accelerators.apply_accelerator import apply_accelerator
 from data.get_dataset import get_dataset
 from load_models import get_naive_model_and_tokenizer, load_model, list_checkpoint_models
+
+from pytorch_quantization import quant_modules
 from datasets import load_dataset
 
 
@@ -161,6 +166,7 @@ def inference_perplexity(
     stride: int = 1024,
     is_log: bool = True,
     is_plot: bool = True,
+    use_cuda: bool = False,
 ):
     # Set up the tokenizer and models
     models = {}
@@ -168,13 +174,25 @@ def inference_perplexity(
     for model_name in model_names:
         for accelerator in accelerators:
             if accelerator == QUANTIZATION_GPU:
-                model, tokenizer = get_naive_model_and_tokenizer(model_name, load_in_8bit=True)
+                model, tokenizer = get_naive_model_and_tokenizer(model_name, load_in_8bit=True, device_map="auto")
             else:
-                model, tokenizer = get_naive_model_and_tokenizer(model_name, load_in_8bit=False)
-                # if accelerator == QUANTIZATION:
-                #     model = quantization(model, DynamicQ)
-                # else:
-                #     apply_accelerator(model_name, model, accelerator_type=accelerator, k=10)
+                model, tokenizer = get_naive_model_and_tokenizer(model_name, load_in_8bit=False, device_map=None)
+                if use_cuda:
+                    model = model.to("cuda:1")
+                if accelerator == "":
+                    test = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
+                    encodings = tokenizer("\n\n".join(test["text"][:num_sentences]), return_tensors="pt")
+                    example_input = encodings.input_ids[:, :1000]
+                    if use_cuda:
+                        example_input = example_input.to("cuda:1")
+                    model = quantization(model, DynamicQ, example_input=example_input, model_name=model_name,)
+                else:
+                    test = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
+                    encodings = tokenizer("\n\n".join(test["text"][:num_sentences]), return_tensors="pt").to("cuda:1")
+                    example_input = [encodings.input_ids[:, :1000], encodings.input_ids[:, 1000]]
+                    apply_accelerator(
+                        model_name, model, accelerator_type=accelerator, k=100, example_input=example_input, use_cuda=use_cuda,
+                    )
             # print(f"{model_name} + {accelerator} size:")
             # print_size_of_model(model)
             new_model_name = model_name + f"+{accelerator}"
@@ -189,6 +207,9 @@ def inference_perplexity(
             raise NotImplementedError(f"{dataset} is not implemented")
 
         encodings = tokenizer("\n\n".join(test["text"][:num_sentences]), return_tensors="pt")
+        if use_cuda:
+            encodings = encodings.to("cuda:1")
+
         if GPT2 in model_name:
             max_length = model.config.n_positions
         elif OPT in model_name:
@@ -204,7 +225,7 @@ def inference_perplexity(
         num_samples = 0
         for begin_loc in tqdm(range(0, seq_len, stride)):
             num_samples += 1
-            end_loc = min(begin_loc + max_length, seq_len)
+            end_loc = min(begin_loc + stride, seq_len)
             trg_len = end_loc - prev_end_loc  # may be different from stride on last loop
             input_ids = encodings.input_ids[:, begin_loc:end_loc]
             target_ids = input_ids.clone()
@@ -213,7 +234,7 @@ def inference_perplexity(
             with torch.no_grad():
                 start_time = time.time()
                 if accelerator == QUANTIZATION:
-                    outputs = model(input_ids, labels=target_ids)
+                    outputs = model(input_ids.cuda(), labels=target_ids)
                 else:
                     outputs = model(input_ids, labels=target_ids)
                 inference_time += time.time() - start_time
@@ -222,7 +243,7 @@ def inference_perplexity(
                 # Multiply it with trg_len to get the summation instead of average.
                 # We will take average over all the tokens to get the true average
                 # in the last step of this example.
-                neg_log_likelihood = outputs.loss * trg_len
+                neg_log_likelihood = outputs.loss.double() * trg_len
 
             nlls.append(neg_log_likelihood)
 
@@ -230,7 +251,9 @@ def inference_perplexity(
             if end_loc == seq_len:
                 break
         added_array = torch.stack(nlls).sum() / end_loc
-        added_array = added_array.cuda()
+        if use_cuda:
+            added_array = added_array.cuda()
+
         ppl = torch.exp(added_array)
         inference_time /= num_samples
 
@@ -250,7 +273,9 @@ def inference_perplexity(
 
 
 if __name__ == "__main__":
-    inference_perplexity([OPT_125M, OPT_350M, OPT_1_3B, OPT_2_7B], [ None])
+    use_cuda = True
+    inference_perplexity([OPT_125M], [None], num_sentences=100, stride=500, use_cuda=use_cuda)
+    # inference_pipeline([OPT_125M], [None, QUANTIZATION])
     # inference_perplexity([OPT_350M], [None, QUANTIZATION])
     # # Get one checkpoint
     # checkpoint_models = [list_checkpoint_models()[1]]
