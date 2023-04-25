@@ -67,7 +67,9 @@ def apply_accelerator(model_name: str,
     elif OPT in model_name:
         use_cuda = accelerator_args["use_cuda"]
         if accelerator_type == QUANTIZATION:
-            quantization(model, DynamicQ)
+            for i, block in enumerate(model.model.decoder.layers):
+                block.fc1 = quantization(block.fc1, DynamicQ)
+                block.fc2 = quantization(block.fc2, DynamicQ)
             # example_input = accelerator_args["example_input"]
             # quant_desc_input = QuantDescriptor(calib_method='histogram')
             # quant_nn.QuantLinear.set_default_quant_desc_input(quant_desc_input)
