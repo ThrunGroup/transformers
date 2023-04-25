@@ -1,9 +1,13 @@
 import os
+import torch
 from typing import List
 
 from accelerators.accelerator_factory import AcceleratorFactory
-from utils.constants import TRANSFORMER_XL, GPT2, GPT2_LARGE
-
+from accelerators.quantization import collect_stats, compute_amax, quantization
+from utils.constants import TRANSFORMER_XL, GPT2, GPT2_LARGE, OPT, OPT_350M, QUANTIZATION, SVD, PRUNING, DynamicQ
+from pytorch_quantization import nn as quant_nn
+from pytorch_quantization import calib
+from pytorch_quantization.tensor_quant import QuantDescriptor
 
 def apply_accelerator(model_name: str,
                       model,
@@ -23,6 +27,9 @@ def apply_accelerator(model_name: str,
     if accelerator_type is None:
         return
 
+    if layers_to_accelerate is None:
+        layers_to_accelerate = list(range(100))  # Hard-coded
+
     accelerated_layers = []
 
     accelerator = AcceleratorFactory().get_accelerator(accelerator_type)
@@ -41,6 +48,7 @@ def apply_accelerator(model_name: str,
         checkpoint_dir = os.path.join(os.path.dirname(__file__), model_name)
 
         k = accelerator_args["k"]
+
         for i, block in enumerate(model.transformer.h):
             if i in layers_to_accelerate:
                 # Only accelerate the specified layers
@@ -52,7 +60,31 @@ def apply_accelerator(model_name: str,
                     block.mlp.c_proj, k=k, checkpoint_path=checkpoint_path + "_c_proj", is_conv1d=True
                 )
                 accelerated_layers.extend([f"transformer.h.{i}.mlp.c_fc", f"transformer.h.{i}.mlp.c_proj"])
+
         # checkpoint_path = os.path.join(checkpoint_dir, f"lm_head")
         # model.lm_head = accelerator(model.lm_head, k=k, checkpoint_path=checkpoint_path, is_conv1d=False)
 
-    return accelerated_layers
+    elif OPT in model_name:
+        use_cuda = accelerator_args["use_cuda"]
+        if accelerator_type == QUANTIZATION:
+            quantization(model, DynamicQ)
+            # example_input = accelerator_args["example_input"]
+            # quant_desc_input = QuantDescriptor(calib_method='histogram')
+            # quant_nn.QuantLinear.set_default_quant_desc_input(quant_desc_input)
+            # for i, block in enumerate(model.model.decoder.layers):
+            #     block.fc1 = accelerator(block.fc1, use_cuda=use_cuda)
+            #     block.fc2 = accelerator(block.fc2, use_cuda=use_cuda)
+            # with torch.no_grad():
+            #     collect_stats(model, data_loader=[example_input], num_batches=1)
+            #     compute_amax(model, method="percentile", percentile=99.99)
+            # if use_cuda:
+            #     model.cuda()
+        elif accelerator_type in [SVD, PRUNING]:
+            k = accelerator_args["k"]
+            for i, block in enumerate(model.model.decoder.layers):
+                block.fc1 = accelerator(block.fc1, k=k, is_conv1d=False)
+                block.fc2 = accelerator(block.fc2, k=k, is_conv1d=False)
+
+
+
+    return model, accelerated_layers
