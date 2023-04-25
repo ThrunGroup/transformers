@@ -28,6 +28,7 @@ def evaluate_model(model_name: str,
     :param tokenizer: Tokenizer to tokenize the dataset
     :param test_dataset: Dataset to evaluate the model on
     :param trainer: HuggingFace Trainer to evaluate the model
+    :returns: Dictionary of evaluation metrics and inference time
     """
     if not (model and tokenizer and test_dataset and trainer):
         # Load the model, tokenizer, dataset, and trainer if not provided
@@ -80,39 +81,7 @@ def evaluate_model(model_name: str,
     log_df.to_csv(filename, index=False)
     print("Saved the file to ", filename)
 
-
-def inference_pipeline(
-        model_names: List[str] = [GPT2], accelerators: List[str] = [None, "SVD"],
-):
-    # Set up the tokenizer and models
-    models = {}
-    tokenizers = {}
-    for accelerator in accelerators:
-        for model_name in model_names:
-            model, tokenizer = get_naive_model_and_tokenizer(model_name)
-            apply_accelerator(model_name, model, accelerator, k=200)
-            new_model_name = model_name + f"+ {accelerator}"
-            models[new_model_name] = model
-            tokenizers[new_model_name] = tokenizer
-
-    # Benchmark the inference time for each model
-    # Encode input sequence
-    for model_name, model in models.items():
-        print(f"Model: ", model_name)
-        tokenizer = tokenizers[model_name]
-        input_ids = tokenizer.encode(
-            "Once upon a week, ",
-            return_tensors="pt",
-        )  # Encode input sequence
-        start_time = time.time()
-        output_ids = model.generate(input_ids, max_length=50)  # Generate text
-        end_time = time.time()
-        inference_time = end_time - start_time
-
-        # Decode output sequence
-        output_text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        print("\tModel output: ", output_text)
-        print(f"\tInference time: {inference_time:.4f} seconds")
+    return log_dict
 
 
 if __name__ == "__main__":

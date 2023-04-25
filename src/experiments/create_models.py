@@ -1,7 +1,6 @@
 import os
 from transformers import Trainer, TrainingArguments, EarlyStoppingCallback
 from typing import List
-import torch.nn as nn
 
 from accelerators.apply_accelerator import apply_accelerator
 from data.get_dataset import get_dataset
@@ -69,6 +68,7 @@ def finetune(model_name: str, model, tokenizer, dataset_name: str, num_epochs: i
     :param num_epochs: Number of epochs to train the model
     :param resume_from_checkpoint: Whether to resume the training from the checkpoint
     :param do_evaluation: Whether to evaluate the model after training and save the metrics
+    :returns: Dictionary of evaluation metrics and inference time if `do_evaluation` is true
     """
     dataset = get_dataset(dataset_name, tokenizer, model)
     train_dataset, test_dataset = dataset.get_tokenized_dataset()
@@ -116,11 +116,11 @@ def finetune(model_name: str, model, tokenizer, dataset_name: str, num_epochs: i
     trainer.train(resume_from_checkpoint=resume_from_checkpoint)
 
     if do_evaluation:
-        evaluate_model(model_name, dataset_name,
-                       model=model,
-                       tokenizer=tokenizer,
-                       test_dataset=test_dataset,
-                       trainer=trainer)
+        return evaluate_model(model_name, dataset_name,
+                              model=model,
+                              tokenizer=tokenizer,
+                              test_dataset=test_dataset,
+                              trainer=trainer)
 
 
 def create_model(model_type: str,
@@ -145,6 +145,7 @@ def create_model(model_type: str,
     :param do_evaluation: Whether to evaluate the model after training and save the metrics
     :param accelerator_type: Type of the accelerator to apply (None, SVD, etc.)
     :param accelerator_args: Optional arguments for the accelerator
+    :return: Dictionary of evaluation logs if `do_evaluation` is true
     """
     # Load a pretrained original model from HuggingFace
     model, tokenizer = get_naive_model_and_tokenizer(model_type)
@@ -176,13 +177,9 @@ def create_model(model_type: str,
     # Accelerate & Finetune the model
     accelerated_layers = apply_accelerator(model_type, model, layers_to_accelerate, accelerator_type,
                                            **accelerator_args)
-    # model.resize_token_embeddings(len(tokenizer))
-    # model.transformer.output = nn.Sequential(
-    #     model.transformer.output,
-    #     nn.Linear(model.config.n_embd, 128)
-    # )
     freeze_layers(model, layers_to_freeze, train_accelerated_layers, accelerated_layers)
-    finetune(model_name, model, tokenizer, dataset_name, num_epochs, do_evaluation=do_evaluation)
+    evaluation_logs = finetune(model_name, model, tokenizer, dataset_name, num_epochs, do_evaluation=do_evaluation)
+    return evaluation_logs
 
 
 if __name__ == "__main__":
