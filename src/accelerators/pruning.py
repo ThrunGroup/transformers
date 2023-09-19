@@ -15,12 +15,13 @@ class PruningWrapper(nn.Module):
         # self.pruning_type = pruning_type
         # if self.pruning_type == "random":
         #     self.layer.weight = nn.Parameter(layer.weight[..., self.idx])
+        print("ANG")
     def forward(self, x):
         idcs = torch.randint(0, x.size()[-1], size=(200, ))
         output = F.linear(x[..., idcs], self.layer.weight[..., idcs], self.layer.bias)
         # output = self.layer(x)
 
-        sampled_activated_idcs = output > -0.01
+        sampled_activated_idcs = output > -0.001
         true_output = self.layer(x)
         true_activated_idcs = true_output > 0
         # print(torch.histogram(true_output[131].cpu(), 10))

@@ -345,6 +345,7 @@ class OPTDecoderLayer(nn.Module):
             hidden_states = self.final_layer_norm(hidden_states)
 
         hidden_states = self.fc1(hidden_states)
+        print(torch.nonzero(hidden_states>0))
         print(torch.sum(hidden_states>0)/ torch.sum(hidden_states<=0))
         hidden_states = self.activation_fn(hidden_states)
 
